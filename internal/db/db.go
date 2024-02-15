@@ -117,10 +117,19 @@ func (d *DB) AddUserWallet(id, wallet string) error {
 // RemoveUserWallet removes a wallet from the user's wallets. If the user does not exist, it returns an error.
 func (d *DB) RemoveUserWallet(id, wallet string) error {
 	// get the current wallets
-	// wallets := d.GetUserWallets(id)
+	wallets := d.GetUserWallets(id)
 
-	
-	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", "", id)
+	// remove the wallet from the slice
+	var newWallets []string
+	for _, w := range wallets {
+		if w != wallet {
+			newWallets = append(newWallets, w)
+		}
+	}
+
+	// Join the wallets into a comma-separated string
+	walletString := strings.Join(newWallets, ",")
+	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", walletString, id)
 	return err
 }
 
