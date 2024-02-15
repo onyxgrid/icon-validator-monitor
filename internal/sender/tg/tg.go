@@ -144,7 +144,7 @@ func (t *TelegramBot) SendMessage(chatID string, message string) error {
 // registerWallet registers a wallet
 func (t *TelegramBot) registerWallet(b *gotgbot.Bot, ctx *ext.Context) error {
 	// Reply to the user
-	msg, err := ctx.EffectiveMessage.Reply(b, fmt.Sprintf("Give me the address you want to register, please."), &gotgbot.SendMessageOpts{
+	msg, err := ctx.EffectiveMessage.Reply(b, "Give me the address you want to register, please.", &gotgbot.SendMessageOpts{
 		ParseMode: "html",
 		ReplyMarkup: &gotgbot.ForceReply{
 			ForceReply: true,
