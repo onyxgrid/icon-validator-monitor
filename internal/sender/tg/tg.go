@@ -12,22 +12,24 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
 	"github.com/paulrouge/icon-validator-monitor/internal/icon"
+	"github.com/paulrouge/icon-validator-monitor/internal/util"
+
 	// "github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 )
 
 // to do: maybe have some sort of channel that holds ids of messages that are been sent, and remove them after a certain time
 
-
 // Bot is the Telegram bot
 type TelegramBot struct {
 	bot *gotgbot.Bot
 	registerWalletMsgId *int64
 	DB *db.DB
+	Icon *icon.Icon
 }
 
 // NewBot creates a new Bot
-func NewBot(d *db.DB) (*TelegramBot, error) {
+func NewBot(d *db.DB, i *icon.Icon) (*TelegramBot, error) {
 	token := os.Getenv("TELEGRAM_TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("TELEGRAM_TOKEN is not set")
@@ -42,7 +44,7 @@ func NewBot(d *db.DB) (*TelegramBot, error) {
 		panic("failed to create new bot: " + err.Error())
 	}
 
-	return &TelegramBot{bot: b, DB: d}, nil
+	return &TelegramBot{bot: b, DB: d, Icon: i}, nil
 }
 
 // Init initializes the bot
@@ -176,9 +178,6 @@ func (t *TelegramBot) handleRegisterReply(b *gotgbot.Bot, ctx *ext.Context) erro
 	} else {
 		// users current registered wallets
 		wallets := t.DB.GetUserWallets(strconv.FormatInt(chatID, 10))
-		if wallets == nil {
-			return fmt.Errorf("failed to get user wallets")
-		}
 
 		// check if the wallet is already registered
 		for _, wallet := range wallets {
@@ -222,16 +221,33 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	chatID := ctx.EffectiveMessage.Chat.Id
 	wallets := t.DB.GetUserWallets(strconv.FormatInt(chatID, 10))
 	if wallets == nil {
-		return fmt.Errorf("failed to get user wallets")
+		err := t.SendMessage(strconv.FormatInt(chatID, 10), "You have no registered wallets.")
+		if err != nil {
+			return fmt.Errorf("failed to send message: %w", err)
+		}
+		return nil
 	}
 
 	msg := "Your registered wallets are:\n\n"
 	
-	// format address to hx012...h921
-	f := fmt.Sprintf("%s...%s", wallets[0][:6], wallets[0][len(wallets[0])-6:])
-
 	for _, wallet := range wallets {
+		// format address to hx012...h921
+		f := fmt.Sprintf("%s...%s", wallet[:6], wallet[len(wallet)-6:])
 		msg += fmt.Sprintf("[%s](https://icontracker.xyz/address/%s)\n", f, wallet)
+
+		// get the delegation info
+		delegation, err := t.Icon.GetDelegation(wallet)
+		if err != nil {
+			return fmt.Errorf("failed to get delegation info: %w", err)
+		}
+
+		// for each delegation, add the address and value to the message
+		for _, d := range delegation.Delegations {
+			fl := util.FormatIconNumber(d.Value)
+			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t🗳️ votes: %s icx\n\n", d.Name, d.Address, fl)
+
+		}
+		msg += "\n"
 	}
 
 	// Send the message to the chat

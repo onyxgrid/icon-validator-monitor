@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/joho/godotenv"
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 	"github.com/paulrouge/icon-validator-monitor/internal/icon"
@@ -47,27 +45,19 @@ func main() {
 		panic(err)
 	}
 
-	// Create a new Telegram bot
-	tgBot, err := tg.NewBot(db); if err != nil {
-		panic(err)
-	}
-
-	go tgBot.Init();
-
 	// Create a new Icon client
 	client, err := icon.NewIcon(); if err != nil {
 		panic(err)
 	}
 
-	adr := "hxf0fa3e948b05eca500400a88c13808d0797e4850"
-	r, err := client.GetDelegation(adr)
-	if err != nil {
+	// Create a new Telegram bot
+	tgBot, err := tg.NewBot(db, client); if err != nil {
 		panic(err)
 	}
 
-	for _, d := range r.Delegations {
-		fmt.Println(d.Address, d.Value, d.Name)
-	}
+	go tgBot.Init();
+
+
 	
 	// Create a new MainService
 	service := NewMainService(db, tgBot, []model.Sender{}, client)

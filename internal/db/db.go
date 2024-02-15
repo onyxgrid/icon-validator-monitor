@@ -13,6 +13,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -77,7 +78,7 @@ func (d *DB) SetUserEmail(id, email string) error {
 	return err
 }
 
-// GetUserWallets returns a slice of wallets of a user given its id. If the user does not exist, it returns an error.
+// GetUserWallets returns a slice of wallets of a user given its id. If the user does not exist, or has no wallets, it returns an empty slice.
 func (d *DB) GetUserWallets(id string) ([]string) {
 	var wallets string
 	err := d.db.QueryRow("SELECT wallets FROM users WHERE id = ?", id).Scan(&wallets)
@@ -85,17 +86,46 @@ func (d *DB) GetUserWallets(id string) ([]string) {
 		return []string{}
 	}
 
-	return []string{wallets}
+	// split the wallets into a slice
+	var w []string
+	if wallets != "" {
+		w = strings.Split(wallets, ",")
+	}
+
+	return w
 }
 
 // AddUserWallet adds a wallet to the user's wallets. If the user does not exist, it inserts a new row.
 func (d *DB) AddUserWallet(id, wallet string) error {
-	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", wallet, id)
-	return err
+	// get the current wallets
+	wallets := d.GetUserWallets(id)
+
+	if len(wallets) == 0 {
+		_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", wallet, id)
+		return err
+	} else {
+		// add the wallet to the db
+		wallets = append(wallets, wallet)
+        // Join the wallets into a comma-separated string
+        walletString := strings.Join(wallets, ",")
+
+		_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", walletString, id)
+		return err
+	}
 }
 
 // RemoveUserWallet removes a wallet from the user's wallets. If the user does not exist, it returns an error.
 func (d *DB) RemoveUserWallet(id, wallet string) error {
+	// get the current wallets
+	// wallets := d.GetUserWallets(id)
+
+	
+	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", "", id)
+	return err
+}
+
+// RemoveAllWalletsUser removes all wallets from the user's wallets. If the user does not exist, it returns an error.
+func (d *DB) RemoveAllWalletsUser(id string) error {
 	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", "", id)
 	return err
 }
