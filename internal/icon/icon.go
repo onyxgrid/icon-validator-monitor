@@ -1,9 +1,12 @@
 package icon
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/eyeonicon/go-icon-sdk/transactions"
 	"github.com/icon-project/goloop/client"
@@ -139,4 +142,35 @@ func (i *Icon) GetValidatorName(address string) (string, error) {
 	}
 
 	return name, nil
+}
+
+// GetAllValidators returns the list of all validators
+func (i *Icon) GetAllValidators() ([]model.ValidatorInfo, error){
+	u := "https://tracker.icon.community/api/v1/governance/preps"
+
+	// make the request
+	response, err := http.Get(u)
+	if err != nil {
+		return nil, err
+	}
+
+	// close the response body
+	defer response.Body.Close()
+
+	// get X-Total-Count header
+	totalCount := response.Header.Get("X-Total-Count")
+	c, err := strconv.Atoi(totalCount)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_ = c
+
+	// get the validators
+	var vs []model.ValidatorInfo
+	err = json.NewDecoder(response.Body).Decode(&vs)
+	if err != nil {
+		return nil, err
+	}
+
+	return vs, nil
 }

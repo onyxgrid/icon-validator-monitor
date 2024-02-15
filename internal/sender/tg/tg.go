@@ -12,6 +12,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
 	"github.com/paulrouge/icon-validator-monitor/internal/icon"
+	"github.com/paulrouge/icon-validator-monitor/internal/model"
 	"github.com/paulrouge/icon-validator-monitor/internal/util"
 
 	// "github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/callbackquery"
@@ -24,8 +25,10 @@ import (
 type TelegramBot struct {
 	bot *gotgbot.Bot
 	registerWalletMsgId *int64
+	removeWalletMsgId *int64
 	DB *db.DB
 	Icon *icon.Icon
+	Validators map[string]model.ValidatorInfo
 }
 
 // NewBot creates a new Bot
@@ -44,7 +47,18 @@ func NewBot(d *db.DB, i *icon.Icon) (*TelegramBot, error) {
 		panic("failed to create new bot: " + err.Error())
 	}
 
-	return &TelegramBot{bot: b, DB: d, Icon: i}, nil
+	validators, err := i.GetAllValidators()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get validators: %w", err)
+	}
+
+	validatorsMap := make(map[string]model.ValidatorInfo)
+	for _, v := range validators {
+		validatorsMap[v.Address] = v
+	}
+
+
+	return &TelegramBot{bot: b, DB: d, Icon: i, Validators: validatorsMap}, nil
 }
 
 // Init initializes the bot
@@ -66,6 +80,8 @@ func (t *TelegramBot) Init() {
 	dispatcher.AddHandler(handlers.NewCommand("register", t.registerWallet))
 	// /wallets command to show the wallets of a user
 	dispatcher.AddHandler(handlers.NewCommand("mywallets", t.showWallets))
+	// /remove command to remove a wallet
+	dispatcher.AddHandler(handlers.NewCommand("remove", t.removeWallet))
 
 	updater := ext.NewUpdater(dispatcher, nil)
 
@@ -100,6 +116,9 @@ func (t *TelegramBot)Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 		// check if the message is a reply to the registerWallet message
 		if t.registerWalletMsgId != nil && ctx.EffectiveMessage.ReplyToMessage.MessageId == *t.registerWalletMsgId {
 			return t.handleRegisterReply(b, ctx)
+		}
+		if t.removeWalletMsgId != nil && ctx.EffectiveMessage.ReplyToMessage.MessageId == *t.removeWalletMsgId {
+			return t.handleRemoveReply(b, ctx)
 		}
 	}
 	
@@ -232,7 +251,7 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	
 	for _, wallet := range wallets {
 		// format address to hx012...h921
-		f := fmt.Sprintf("%s...%s", wallet[:6], wallet[len(wallet)-6:])
+		f := fmt.Sprintf("%s...%s\n", wallet[:6], wallet[len(wallet)-6:])
 		msg += fmt.Sprintf("[%s](https://icontracker.xyz/address/%s)\n", f, wallet)
 
 		// get the delegation info
@@ -244,8 +263,12 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		// for each delegation, add the address and value to the message
 		for _, d := range delegation.Delegations {
 			fl := util.FormatIconNumber(d.Value)
-			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t🗳️ votes: %s icx\n\n", d.Name, d.Address, fl)
+			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t🗳️ votes: %s icx\n", d.Name, d.Address, fl)
 
+			msg += fmt.Sprintf("\t\t\t🧾 commision rate: %v%%\n", t.Validators[d.Address].CommissionRate)
+			
+
+			msg += "-------------------------\n"
 		}
 		msg += "\n"
 	}
@@ -259,3 +282,64 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	return nil
 }
 
+func (t *TelegramBot) removeWallet(b *gotgbot.Bot, ctx *ext.Context) error {
+	// reply to the user
+	msg, err := ctx.EffectiveMessage.Reply(b, "Give me the address you want to remove, please.", &gotgbot.SendMessageOpts{
+		ParseMode: "html",
+		ReplyMarkup: &gotgbot.ForceReply{
+			ForceReply: true,
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to send reply message: %w", err)
+	}
+
+	// Save the message ID
+	t.removeWalletMsgId = &msg.MessageId
+
+	return nil
+}
+
+func (t *TelegramBot) handleRemoveReply(b *gotgbot.Bot, ctx *ext.Context) error {
+	msg := ctx.EffectiveMessage.Text
+	chatID := ctx.EffectiveMessage.Chat.Id
+	// users current registered wallets
+	wallets := t.DB.GetUserWallets(strconv.FormatInt(chatID, 10))
+
+	// check if the wallet is already registered
+	for _, wallet := range wallets {
+		if wallet == msg {
+			// remove the wallet from the database
+			err := t.DB.RemoveUserWallet(strconv.FormatInt(chatID, 10), msg)
+			if err != nil {
+				t.removeWalletMsgId = nil
+				return fmt.Errorf("failed to remove wallet from the database: %w", err)
+			}
+			
+			// Send the message to the chat
+			err = t.SendMessage(strconv.FormatInt(chatID, 10), msg + " has been removed.")
+			if err != nil {
+				t.removeWalletMsgId = nil
+				return fmt.Errorf("failed to send message: %w", err)
+			}
+
+			// Reset the registerWalletMsgId
+			t.removeWalletMsgId = nil
+
+			return nil
+		}
+	}
+
+	// Send the message to the chat
+	err := t.SendMessage(strconv.FormatInt(chatID, 10), msg + " is not registered.")
+	if err != nil {
+		t.removeWalletMsgId = nil
+		return fmt.Errorf("failed to send message: %w", err)
+	}
+
+	// Reset the registerWalletMsgId
+	t.removeWalletMsgId = nil
+
+	return nil
+}
