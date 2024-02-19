@@ -3,6 +3,7 @@ package icon
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"os"
 	"regexp"
@@ -95,10 +96,17 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 			fmt.Println("Value field is not of type string")
 			continue
 		}
+
+		// Convert the value to a big.Int
+		valueBigInt, ok := new(big.Int).SetString(value, 0)
+		if !ok {
+			fmt.Println("Failed to convert value to big.Int")
+			continue
+		}
 	
 		res.Delegations = append(res.Delegations, model.Delegation{
 			Address: address,
-			Value:   value,
+			Value:   valueBigInt,
 		})
 
 		// Get the name of the validator
@@ -162,13 +170,20 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 
 		value, ok := bond["value"].(string)
 		if !ok {
-			fmt.Println("Value field is not of type string")
+			fmt.Println("Value field is not of string")
+			continue
+		}
+
+		// Convert the value to a big.Int
+		valueBigInt, ok := new(big.Int).SetString(value, 0)
+		if !ok {
+			fmt.Println("Failed to convert value to big.Int")
 			continue
 		}
 
 		res.Bonds = append(res.Bonds, model.Bond{
 			Address: address,
-			Value:   value,
+			Value:   valueBigInt,
 		})
 
 		// Get the name of the validator

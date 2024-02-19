@@ -1,8 +1,10 @@
 package model
 
+import "math/big"
+
 type Bond struct {
     Address string `json:"address"`
-    Value   string `json:"value"`
+    Value   *big.Int `json:"value"`
 	Name string
 }
 
