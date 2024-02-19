@@ -352,7 +352,7 @@ func (t *TelegramBot) handleRemoveReply(b *gotgbot.Bot, ctx *ext.Context) error 
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	// Reset the registerWalletMsgId
+	// Reset the removeWalletMsgId
 	t.removeWalletMsgId = nil
 
 	return nil
