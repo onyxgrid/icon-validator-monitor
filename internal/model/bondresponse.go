@@ -1,0 +1,14 @@
+package model
+
+type Bond struct {
+    Address string `json:"address"`
+    Value   string `json:"value"`
+	Name string
+}
+
+type BondResponse struct {
+    Bonds       []Bond `json:"bonds"`
+    TotalBonded string `json:"totalBonded"`
+    Unbonds     []Bond `json:"unbonds"`
+    VotingPower string `json:"votingPower"`
+}

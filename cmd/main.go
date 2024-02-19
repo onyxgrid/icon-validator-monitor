@@ -52,12 +52,12 @@ func main() {
 
 	// Create a new Telegram bot
 	tgBot, err := tg.NewBot(db, client); if err != nil {
+		// this should be added to the log. (failed on parsing res into validotrinfo before...)
+		
 		panic(err)
 	}
 
 	go tgBot.Init();
-
-
 	
 	// Create a new MainService
 	service := NewMainService(db, tgBot, []model.Sender{}, client)

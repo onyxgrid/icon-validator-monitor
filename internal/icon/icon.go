@@ -46,7 +46,6 @@ func IsValidIconAddress(address string) bool {
 
 // getDelegation returns the delegation of a wallet
 func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
-	// the parameter _tokenId is set to 0x2
 	params := map[string]interface{}{
 		"address": address, 
 	}
@@ -108,6 +107,76 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 			fmt.Println(err)
 		}
 		res.Delegations[len(res.Delegations)-1].Name = name
+	}
+
+	return res, nil
+}
+
+
+// GetBonds returns the bonds of a wallet
+func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
+	params := map[string]interface{}{
+		"address": address, 
+	}
+
+	// create call object with params as nil
+	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getBond", params)
+
+	// make the call
+	response, err := i.client.Call(callObject)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	responseData, ok := response.(map[string]interface{})
+
+	if !ok {
+		fmt.Println("Response is not of type map[string]interface{}")
+		return model.BondResponse{}, fmt.Errorf("response is not of type map[string]interface{}")
+	}
+
+	// Extracting and assigning values to the struct fields
+	res := model.BondResponse{
+		TotalBonded: fmt.Sprintf("%v", responseData["totalBonded"]),
+		VotingPower: fmt.Sprintf("%v", responseData["votingPower"]),
+	}
+
+	bonds, ok := responseData["bonds"].([]interface{})
+	if !ok {
+		fmt.Println("Bonds field is not of type []interface{}")
+		return model.BondResponse{}, fmt.Errorf("bonds field is not of type []interface{}")
+	}
+
+	for _, bondData := range bonds {
+		bond, ok := bondData.(map[string]interface{})
+		if !ok {
+			fmt.Println("Bond data is not of type map[string]interface{}")
+			continue
+		}
+
+		address, ok := bond["address"].(string)
+		if !ok {
+			fmt.Println("Address field is not of type string")
+			continue
+		}
+
+		value, ok := bond["value"].(string)
+		if !ok {
+			fmt.Println("Value field is not of type string")
+			continue
+		}
+
+		res.Bonds = append(res.Bonds, model.Bond{
+			Address: address,
+			Value:   value,
+		})
+
+		// Get the name of the validator
+		name, err := i.GetValidatorName(address)
+		if err != nil {
+			fmt.Println(err)
+		}
+		res.Bonds[len(res.Bonds)-1].Name = name
 	}
 
 	return res, nil

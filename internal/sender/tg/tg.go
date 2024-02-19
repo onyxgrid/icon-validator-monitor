@@ -235,7 +235,7 @@ func (t *TelegramBot) handleRegisterReply(b *gotgbot.Bot, ctx *ext.Context) erro
 }
 
 
-// showWallets shows the wallets of a user
+// showWallets shows the wallets of a user, and the delegation info
 func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	chatID := ctx.EffectiveMessage.Chat.Id
 	wallets := t.DB.GetUserWallets(strconv.FormatInt(chatID, 10))
@@ -263,13 +263,27 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		// for each delegation, add the address and value to the message
 		for _, d := range delegation.Delegations {
 			fl := util.FormatIconNumber(d.Value)
-			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t🗳️ votes: %s icx\n", d.Name, d.Address, fl)
+			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t🗳️ votes: %s ICX\n", d.Name, d.Address, fl)
 
 			msg += fmt.Sprintf("\t\t\t🧾 commision rate: %v%%\n", t.Validators[d.Address].CommissionRate)
 			
 
-			msg += "-------------------------\n"
+			msg += "--------------------------------\n"
 		}
+
+		// get the bond info
+		bond, err := t.Icon.GetBonds(wallet)
+		if err != nil {
+			return fmt.Errorf("failed to get bond info: %w", err)
+		}
+
+		// for each bond, add the address and value to the message
+		for _, b := range bond.Bonds {
+			fl := util.FormatIconNumber(b.Value)
+			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t💰 bonded: %s ICX\n", b.Name, b.Address, fl)
+			msg += "--------------------------------\n"
+		}
+
 		msg += "\n"
 	}
 

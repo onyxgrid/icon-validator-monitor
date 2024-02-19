@@ -26,7 +26,7 @@ type ValidatorInfo struct {
     Irep                     float64 `json:"irep"`
     SponsoredCpsGrants       int     `json:"sponsored_cps_grants"`
     Stakers                  int     `json:"stakers"`
-    MinDoubleSignHeight      *string `json:"min_double_sign_height"`
+    MinDoubleSignHeight      int `json:"min_double_sign_height"`
     Country                  string  `json:"country"`
     Status                   string  `json:"status"`
     Logo256                  string  `json:"logo_256"`
@@ -43,7 +43,7 @@ type ValidatorInfo struct {
     ServerCountry            string  `json:"server_country"`
     TotalBlocks              float64 `json:"total_blocks"`
     FailureCount             int     `json:"failure_count"`
-    JailFlags                *string `json:"jail_flags"`
+    JailFlags                string     `json:"jail_flags"`
     Email                    string  `json:"email"`
     Grade                    string  `json:"grade"`
     LogoSVG                  string  `json:"logo_svg"`
@@ -51,7 +51,7 @@ type ValidatorInfo struct {
     ServerType               string  `json:"server_type"`
     ValidatedBlocks          float64 `json:"validated_blocks"`
     Penalties                int     `json:"penalties"`
-    UnjailRequestHeight      *string `json:"unjail_request_height"`
+    UnjailRequestHeight      int     `json:"unjail_request_height"`
     Website                  string  `json:"website"`
     LastUpdatedBlock         int     `json:"last_updated_block"`
     Steemit                  *string `json:"steemit"`
