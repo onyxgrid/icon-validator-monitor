@@ -8,6 +8,10 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/sender/tg"
 )
 
+// todo:
+// - make the validatormap update every N hours
+// - get the omm delegation info and implement that info
+
 
 type MainService struct {
 	db *db.DB

@@ -21,7 +21,8 @@ import (
 
 // to do: maybe have some sort of channel that holds ids of messages that are been sent, and remove them after a certain time
 
-// Bot is the Telegram bot
+// Bot is the Telegram bot, but i think we need to change it to acutally something like the mainservice or something
+// because 
 type TelegramBot struct {
 	bot *gotgbot.Bot
 	registerWalletMsgId *int64
@@ -263,11 +264,16 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		// for each delegation, add the address and value to the message
 		for _, d := range delegation.Delegations {
 			fl := util.FormatIconNumber(d.Value)
-			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t🗳️ votes: %s ICX\n", d.Name, d.Address, fl)
+			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\n\t\t\t🗳️ votes: %s ICX\n", d.Name, d.Address, fl)
 
 			msg += fmt.Sprintf("\t\t\t🧾 commision rate: %v%%\n", t.Validators[d.Address].CommissionRate)
+		
+			edr, err := icon.EstimateReward(t.Validators[d.Address], d.Value)
+			if err != nil {
+				continue
+			}
+			msg += fmt.Sprintf("\t\t\t💵 Est. daily reward: $%s\n", util.FormatIconNumber(edr))
 			
-
 			msg += "--------------------------------\n"
 		}
 
@@ -280,7 +286,14 @@ func (t *TelegramBot) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		// for each bond, add the address and value to the message
 		for _, b := range bond.Bonds {
 			fl := util.FormatIconNumber(b.Value)
-			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\t\t\t💰 bonded: %s ICX\n", b.Name, b.Address, fl)
+			msg += fmt.Sprintf(" ▶️ [%s](https://icontracker.xyz/address/%s)\n\n\t\t\t💰 bonded: %s ICX\n", b.Name, b.Address, fl)
+			
+			edr, err := icon.EstimateReward(t.Validators[b.Address], b.Value)
+			if err != nil {
+				continue
+			}
+			msg += fmt.Sprintf("\t\t\t💵 Est. daily reward: $%s\n", util.FormatIconNumber(edr))
+			
 			msg += "--------------------------------\n"
 		}
 
