@@ -11,6 +11,10 @@ func EstimateReward(validator model.ValidatorInfo, votes *big.Int) (*big.Int, er
 	daily := big.NewFloat(validator.RewardDailyUSD)
 	daily.Mul(daily, big.NewFloat(1e18))
 
+	// commission rate
+	cr := big.NewFloat(validator.CommissionRate)
+	daily.Quo(daily, cr)
+
 	// bonded amount
 	b := big.NewFloat(validator.Bonded)
 	b.Quo(b, big.NewFloat(1e18))
@@ -24,7 +28,7 @@ func EstimateReward(validator model.ValidatorInfo, votes *big.Int) (*big.Int, er
 
 	// reward per vote
 	var rpv big.Float
-	rpv.Quo(daily, &t).Quo(&rpv, big.NewFloat(1e18))
+	rpv.Quo(daily, &t).Quo(&rpv, big.NewFloat(1e18)) // divide by 10^18
 
 	// votes
 	v := big.NewFloat(0).SetInt(votes)
@@ -37,8 +41,8 @@ func EstimateReward(validator model.ValidatorInfo, votes *big.Int) (*big.Int, er
 	var res big.Int
 	er.Int(&res)
 
-	// add a 10 x, not sure why, probably wrong but yea...
-	res.Mul(&res, big.NewInt(10))
+	// add a 100 x, not sure why, probably wrong but yea...
+	res.Mul(&res, big.NewInt(100))
 	
 	return &res, nil
 }
