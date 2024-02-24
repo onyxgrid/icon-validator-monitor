@@ -16,21 +16,9 @@ import (
 type MainService struct {
 	db *db.DB
 	TgBot *tg.TelegramBot
+	// Senders is the list of senders that will be used to send the notifications
 	Senders []model.Sender
 	Icon *icon.Icon
-}
-
-func NewMainService(db *db.DB, tgBot *tg.TelegramBot, senders []model.Sender, c *icon.Icon) *MainService {
-	return &MainService{
-		db: db,
-		TgBot: tgBot,
-		Senders: senders,
-		Icon: c,
-	}
-}
-
-func (m *MainService) registerSender(sender model.Sender) {
-	m.Senders = append(m.Senders, sender)
 }
 
 func main() {
@@ -56,8 +44,7 @@ func main() {
 
 	// Create a new Telegram bot
 	tgBot, err := tg.NewBot(db, client); if err != nil {
-		// this should be added to the log. (failed on parsing res into validotrinfo before...)
-		
+		// this should be added to the log. (failed on parsing res into validotrinfo before...)	
 		panic(err)
 	}
 
@@ -65,8 +52,27 @@ func main() {
 	
 	// Create a new MainService
 	service := NewMainService(db, tgBot, []model.Sender{}, client)
-	_ = service
+	service.registerSender(tgBot)
 
 	select{}
-	
+}
+
+func NewMainService(db *db.DB, tgBot *tg.TelegramBot, senders []model.Sender, c *icon.Icon) *MainService {
+	return &MainService{
+		db: db,
+		TgBot: tgBot,
+		Senders: senders,
+		Icon: c,
+	}
+}
+
+func (m *MainService) registerSender(sender model.Sender) {
+	m.Senders = append(m.Senders, sender)
+}
+
+// to do; dettermin how to use this, sendmessage should take in receiver and message
+func (m *MainService) sendMessage(to string, msg string) {
+	// for _, sender := range m.Senders {
+	// 	// sender.SendMessage(msg)
+	// }
 }
