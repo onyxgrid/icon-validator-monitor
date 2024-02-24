@@ -21,8 +21,6 @@ import (
 
 // to do: maybe have some sort of channel that holds ids of messages that are been sent, and remove them after a certain time
 
-// Bot is the Telegram bot, but i think we need to change it to acutally something like the mainservice or something
-// because 
 type TelegramBot struct {
 	bot *gotgbot.Bot
 	registerWalletMsgId *int64
@@ -58,7 +56,6 @@ func NewBot(d *db.DB, i *icon.Icon) (*TelegramBot, error) {
 		validatorsMap[v.Address] = v
 	}
 
-
 	return &TelegramBot{bot: b, DB: d, Icon: i, Validators: validatorsMap}, nil
 }
 
@@ -84,10 +81,10 @@ func (t *TelegramBot) Init() {
 	// /remove command to remove a wallet
 	dispatcher.AddHandler(handlers.NewCommand("remove", t.removeWallet))
 
-	updater := ext.NewUpdater(dispatcher, nil)
-
-	// Add echo handler to reply to all text messages.
+	// Handle all text messages.
 	dispatcher.AddHandler(handlers.NewMessage(message.Text, t.Listen))
+	
+	updater := ext.NewUpdater(dispatcher, nil)
 	
 	// Start receiving updates.
 	err := updater.StartPolling(t.bot, &ext.PollingOpts{
@@ -104,6 +101,7 @@ func (t *TelegramBot) Init() {
 	}
 	log.Printf("%s has been started...\n", t.bot.User.Username)
 
+	go t.UpdateValidators()
 	updater.Idle()
 }
 
@@ -391,4 +389,24 @@ func (t *TelegramBot) handleRemoveReply(b *gotgbot.Bot, ctx *ext.Context) error 
 	t.removeWalletMsgId = nil
 
 	return nil
+}
+
+// UpdateValidators updates the validatormap every hour
+func (t *TelegramBot) UpdateValidators() {
+	for {
+		validators, err := t.Icon.GetAllValidators()
+		if err != nil {
+			log.Println("failed to get validators: " + err.Error())
+			continue
+		}
+
+		validatorsMap := make(map[string]model.ValidatorInfo)
+		for _, v := range validators {
+			validatorsMap[v.Address] = v
+		}
+
+		t.Validators = validatorsMap
+
+		time.Sleep(time.Hour)
+	}
 }
