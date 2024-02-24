@@ -407,6 +407,22 @@ func (t *TelegramBot) UpdateValidators() {
 
 		t.Validators = validatorsMap
 
+		// also check for jail_flag
+		for _, v := range validators {
+			if v.JailFlags != "0x0" {
+				// send a message to the user
+				// get the users that have the validator registered
+				// users := t.DB.GetUsersWithWallet(v.Address)
+				// for _, u := range users {
+				// 	err := t.SendMessage(u, fmt.Sprintf("Your validator [%s](https://icontracker.xyz/address/%s) has been jailed. Reason: %s", v.Name, v.Address, v.JailFlags))
+				// 	if err != nil {
+				// 		log.Println("failed to send message: " + err.Error())
+				// 	}
+				// }
+				fmt.Println("Validator jailed: " + v.Name, v.JailFlags)
+			}
+		}
+
 		time.Sleep(time.Hour)
 	}
 }
