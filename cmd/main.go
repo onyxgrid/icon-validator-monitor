@@ -5,7 +5,8 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 	"github.com/paulrouge/icon-validator-monitor/internal/icon"
 	"github.com/paulrouge/icon-validator-monitor/internal/model"
-	"github.com/paulrouge/icon-validator-monitor/internal/sender/tg"
+	"github.com/paulrouge/icon-validator-monitor/internal/sender/mail"
+	"github.com/paulrouge/icon-validator-monitor/internal/tg"
 )
 
 // todo:
@@ -51,17 +52,26 @@ func main() {
 	go tgBot.Init();
 	
 	// Create a new MainService
-	service := NewMainService(db, tgBot, []model.Sender{}, client)
+	service := NewMainService(db, tgBot, client)
+	
+	// Register the senders that will send the notifications
 	service.registerSender(tgBot)
+
+	// Create a gmail sender
+	gmailSender, err := mail.NewMail(); if err != nil {
+		panic(err)
+	}
+
+	// Register the gmail sender
+	service.registerSender(gmailSender)
 
 	select{}
 }
 
-func NewMainService(db *db.DB, tgBot *tg.TelegramBot, senders []model.Sender, c *icon.Icon) *MainService {
+func NewMainService(db *db.DB, tgBot *tg.TelegramBot, c *icon.Icon) *MainService {
 	return &MainService{
 		db: db,
 		TgBot: tgBot,
-		Senders: senders,
 		Icon: c,
 	}
 }
