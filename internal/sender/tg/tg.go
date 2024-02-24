@@ -384,7 +384,7 @@ func (t *TelegramBot) handleRemoveReply(b *gotgbot.Bot, ctx *ext.Context) error 
 	}
 
 	// Send the message to the chat
-	err := t.SendMessage(strconv.FormatInt(chatID, 10), msg + " is not registered.")
+	err := t.SendMessage(strconv.FormatInt(chatID, 10), msg + " is unregistered.")
 	if err != nil {
 		t.removeWalletMsgId = nil
 		return fmt.Errorf("failed to send message: %w", err)
