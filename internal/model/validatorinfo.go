@@ -43,7 +43,7 @@ type ValidatorInfo struct {
     ServerCountry            string  `json:"server_country"`
     TotalBlocks              float64 `json:"total_blocks"`
     FailureCount             int     `json:"failure_count"`
-    JailFlags                string     `json:"jail_flags"`
+    JailFlags                string  `json:"jail_flags"`
     Email                    string  `json:"email"`
     Grade                    string  `json:"grade"`
     LogoSVG                  string  `json:"logo_svg"`

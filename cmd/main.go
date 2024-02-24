@@ -10,9 +10,9 @@ import (
 )
 
 // todo:
-// - make the validatormap update every N hours
-// - get the omm delegation info and implement that info
-
+// - Take out db from mainservice and make db a global variable, it's fine to have a global db connection
+// - Add correct logging troughout the code
+// - Create a function that sends a weekly report to all users
 
 type MainService struct {
 	db *db.DB
