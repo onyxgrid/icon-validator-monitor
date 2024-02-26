@@ -51,10 +51,7 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 		"address": address, 
 	}
 
-	// create call object with params as nil
 	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getDelegation", params)
-
-	// make the call
 	response, err := i.client.Call(callObject)
 	if err != nil {
 		fmt.Println(err)
@@ -62,7 +59,6 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 
 	responseData, ok := response.(map[string]interface{})
 	if !ok {
-		fmt.Println("Response is not of type map[string]interface{}")
 		return model.DelegationResponse{}, fmt.Errorf("response is not of type map[string]interface{}")
 	}
 	
@@ -74,7 +70,6 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 	
 	delegations, ok := responseData["delegations"].([]interface{})
 	if !ok {
-		fmt.Println("Delegations field is not of type []interface{}")
 		return model.DelegationResponse{}, fmt.Errorf("delegations field is not of type []interface{}")
 	}
 	
@@ -109,7 +104,6 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 			Value:   valueBigInt,
 		})
 
-		// Get the name of the validator
 		name, err := i.GetValidatorName(address)
 		if err != nil {
 			fmt.Println(err)
@@ -127,10 +121,7 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 		"address": address, 
 	}
 
-	// create call object with params as nil
 	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getBond", params)
-
-	// make the call
 	response, err := i.client.Call(callObject)
 	if err != nil {
 		fmt.Println(err)
@@ -139,7 +130,6 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 	responseData, ok := response.(map[string]interface{})
 
 	if !ok {
-		fmt.Println("Response is not of type map[string]interface{}")
 		return model.BondResponse{}, fmt.Errorf("response is not of type map[string]interface{}")
 	}
 
@@ -151,7 +141,6 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 
 	bonds, ok := responseData["bonds"].([]interface{})
 	if !ok {
-		fmt.Println("Bonds field is not of type []interface{}")
 		return model.BondResponse{}, fmt.Errorf("bonds field is not of type []interface{}")
 	}
 
@@ -186,7 +175,6 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 			Value:   valueBigInt,
 		})
 
-		// Get the name of the validator
 		name, err := i.GetValidatorName(address)
 		if err != nil {
 			fmt.Println(err)
@@ -199,15 +187,11 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 
 // GetValidatorName returns the name of a validator given its address
 func (i *Icon) GetValidatorName(address string) (string, error) {
-	// the parameter _tokenId is set to 0x2
 	params := map[string]interface{}{
 		"address": address, 
 	}
 
-	// create call object with params as nil
 	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getPRep", params)
-
-	// make the call
 	response, err := i.client.Call(callObject)
 	if err != nil {
 		fmt.Println(err)
@@ -215,13 +199,11 @@ func (i *Icon) GetValidatorName(address string) (string, error) {
 
 	responseData, ok := response.(map[string]interface{})
 	if !ok {
-		fmt.Println("Response is not of type map[string]interface{}")
 		return "", fmt.Errorf("response is not of type map[string]interface{}")
 	}
 
 	name, ok := responseData["name"].(string)
 	if !ok {
-		fmt.Println("Name field is not of type string")
 		return "", fmt.Errorf("name field is not of type string")
 	}
 
@@ -232,24 +214,21 @@ func (i *Icon) GetValidatorName(address string) (string, error) {
 func (i *Icon) GetAllValidators() ([]model.ValidatorInfo, error){
 	u := "https://tracker.icon.community/api/v1/governance/preps"
 
-	// make the request
 	response, err := http.Get(u)
 	if err != nil {
 		return nil, err
 	}
 
-	// close the response body
 	defer response.Body.Close()
 
-	// get X-Total-Count header
 	totalCount := response.Header.Get("X-Total-Count")
 	c, err := strconv.Atoi(totalCount)
 	if err != nil {
 		fmt.Println(err)
 	}
+	// not sure if we need count to paginate, or if we can just get all the validators at once
 	_ = c
 
-	// get the validators
 	var vs []model.ValidatorInfo
 	err = json.NewDecoder(response.Body).Decode(&vs)
 	if err != nil {

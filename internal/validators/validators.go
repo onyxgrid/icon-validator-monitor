@@ -12,11 +12,11 @@ import (
 func ValidatorInfo(ip string) (*model.PrepResponse, error) {
 	u := "https://tracker.icon.community/api/v1/governance/preps/" + ip
 
-	// get the response
 	resp, err := http.Get(u)
 	if err != nil {
 		return nil, err
 	}
+	
 	defer resp.Body.Close()
 	
 	var res []model.PrepResponse

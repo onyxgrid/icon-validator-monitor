@@ -97,7 +97,6 @@ func (d *DB) GetUserWallets(id string) ([]string) {
 
 // AddUserWallet adds a wallet to the user's wallets. If the user does not exist, it inserts a new row.
 func (d *DB) AddUserWallet(id, wallet string) error {
-	// get the current wallets
 	wallets := d.GetUserWallets(id)
 
 	if len(wallets) == 0 {
@@ -116,7 +115,6 @@ func (d *DB) AddUserWallet(id, wallet string) error {
 
 // RemoveUserWallet removes a wallet from the user's wallets. If the user does not exist, it returns an error.
 func (d *DB) RemoveUserWallet(id, wallet string) error {
-	// get the current wallets
 	wallets := d.GetUserWallets(id)
 
 	// remove the wallet from the slice

@@ -16,7 +16,6 @@ func (i *Icon) GetOmmVotes(address string) []model.OmmResponse {
 	}
 
 	callObject := transactions.CallBuilder(ommDelegationContract, "getUserICXDelegation", params)
-	// make the call
 	response, err := i.client.Call(callObject)
 	if err != nil {
 		fmt.Println(err)
@@ -44,7 +43,6 @@ func (i *Icon) GetOmmVotes(address string) []model.OmmResponse {
 
 		validator := responseData["_address"].(string)
 
-		// Get the name of the validator
 		name, err := i.GetValidatorName(validator)
 		if err != nil {
 			fmt.Println(err)
