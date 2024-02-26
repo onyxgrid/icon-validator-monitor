@@ -10,13 +10,11 @@ import (
 )
 
 // todo:
-// - Take out db from mainservice and make db a global variable, it's fine to have a global db connection
 // - Add correct logging troughout the code
 // - Create a function that sends a weekly report to all users
 // - get the correct omm vote power stuff
 
 type MainService struct {
-	db *db.DB
 	TgBot *tg.TelegramBot
 	// Senders is the list of senders that will be used to send the notifications
 	Senders []model.Sender
@@ -30,12 +28,12 @@ func main() {
 	}
 	
 	// Create a new DB connection
-	db, err := db.NewDB(); if err != nil {
+	err = db.NewDB(); if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer db.DBInstance.Close()
 
-	err = db.Init(); if err != nil {
+	err = db.DBInstance.Init(); if err != nil {
 		panic(err)
 	}
 
@@ -45,7 +43,7 @@ func main() {
 	}
 
 	// Create a new Telegram bot
-	tgBot, err := tg.NewBot(db, client); if err != nil {
+	tgBot, err := tg.NewBot(db.DBInstance, client); if err != nil {
 		// this should be added to the log. (failed on parsing res into validotrinfo before...)	
 		panic(err)
 	}
@@ -53,7 +51,7 @@ func main() {
 	go tgBot.Init();
 	
 	// Create a new MainService
-	service := NewMainService(db, tgBot, client)
+	service := NewMainService(db.DBInstance, tgBot, client)
 	
 	// Register the senders that will send the notifications
 	service.registerSender(tgBot)
@@ -71,7 +69,6 @@ func main() {
 
 func NewMainService(db *db.DB, tgBot *tg.TelegramBot, c *icon.Icon) *MainService {
 	return &MainService{
-		db: db,
 		TgBot: tgBot,
 		Icon: c,
 	}
@@ -81,7 +78,7 @@ func (m *MainService) registerSender(sender model.Sender) {
 	m.Senders = append(m.Senders, sender)
 }
 
-// to do; dettermin how to use this, sendmessage should take in receiver and message
+// to do; determin how to use this, sendmessage should take in receiver and message
 func (m *MainService) sendMessage(to string, msg string) {
 	// for _, sender := range m.Senders {
 	// 	// sender.SendMessage(msg)

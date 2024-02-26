@@ -1,15 +1,5 @@
 package db
 
-/*
-	We only need a minimal db for storing registered users and their preferences.
-	a users table with the following columns:
-	- id (string)
-	- email (string)
-	- wallets ([string])
-
-	We will use a sqlite database for this purpose.
-*/
-
 import (
 	"database/sql"
 	"fmt"
@@ -22,13 +12,16 @@ type DB struct {
 	db *sql.DB
 }
 
-func NewDB() (*DB, error) {
+var DBInstance *DB
+
+func NewDB() error {
 	db, err := sql.Open("sqlite3", "./data/users.db")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &DB{db: db}, nil
+	DBInstance = &DB{db: db}
+	return nil
 }
 
 func (d *DB) Close() error {
