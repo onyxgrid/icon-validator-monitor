@@ -55,19 +55,22 @@ func (d *DB) AddUser(id string) error {
 	return err
 }
 
-// GetUserEmail returns a pointer to email(string) of a user given its id. If the user does not exist, it returns nil.
-func (d *DB) GetUserEmail(id string) *string {
+// GetUserEmail returns the email of a user given its id. If the user does not exist, it returns an empty string.
+func (d *DB) GetUserEmail(id string) string {
 	var email string
 	err := d.db.QueryRow("SELECT email FROM users WHERE id = ?", id).Scan(&email)
 	if err != nil{
-		return nil
+		return ""
 	}
-	return &email
+	return email
 }
 
 // SetUserEmail sets the email of a user given its id. If the user does not exist, it returns an error.
 func (d *DB) SetUserEmail(id, email string) error {
 	_, err := d.db.Exec("UPDATE users SET email = ? WHERE id = ?", email, id)
+	if err != nil {
+		fmt.Println("error setting email", err)
+	}
 	return err
 }
 
@@ -128,5 +131,25 @@ func (d *DB) RemoveUserWallet(id, wallet string) error {
 func (d *DB) RemoveAllWalletsUser(id string) error {
 	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", "", id)
 	return err
+}
+
+// GetAllUsers returns a slice of all users in the database.
+func (d *DB) GetAllUserIDs() ([]int64, error) {
+	rows, err := d.db.Query("SELECT id FROM users")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []int64
+	for rows.Next() {
+		var id int64
+		err = rows.Scan(&id)
+		if err != nil {
+			continue
+		}
+		users = append(users, id)
+	}
+	return users, nil
 }
 
