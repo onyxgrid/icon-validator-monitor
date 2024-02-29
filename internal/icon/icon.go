@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 
 	"github.com/eyeonicon/go-icon-sdk/transactions"
 	"github.com/icon-project/goloop/client"
@@ -221,13 +220,14 @@ func (i *Icon) GetAllValidators() ([]model.ValidatorInfo, error){
 
 	defer response.Body.Close()
 
-	totalCount := response.Header.Get("X-Total-Count")
-	c, err := strconv.Atoi(totalCount)
-	if err != nil {
-		fmt.Println(err)
-	}
 	// not sure if we need count to paginate, or if we can just get all the validators at once
-	_ = c
+	// totalCount := response.Header.Get("X-Total-Count")
+	// c, err := strconv.Atoi(totalCount)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+
+	// _ = c
 
 	var vs []model.ValidatorInfo
 	err = json.NewDecoder(response.Body).Decode(&vs)
