@@ -8,6 +8,7 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/model"
 )
 
+// bring this to env
 const ommDelegationContract = "cx841f29ec6ce98b527d49a275e87d427627f1afe5"
 
 func (i *Icon) GetOmmVotes(address string) []model.OmmResponse {
@@ -47,6 +48,9 @@ func (i *Icon) GetOmmVotes(address string) []model.OmmResponse {
 		if err != nil {
 			fmt.Println(err)
 		}
+
+		// adjust this, votes should be post delegation ratio multiplied
+
 
 		ov := model.OmmResponse{
 			Address: validator,
