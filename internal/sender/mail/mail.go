@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jordan-wright/email"
+	"github.com/paulrouge/icon-validator-monitor/internal/db"
 )
 
 type Mail struct {
@@ -32,6 +33,11 @@ func (m Mail) SendMessage(to string, message string) error {
 	}
 
 	return nil
+}
+
+func (m Mail) GetReceiver(uid string) string {
+	email := db.DBInstance.GetUserEmail(uid)
+	return email
 }
 
 func NewMail() (*Mail, error) {
