@@ -88,6 +88,8 @@ func (t *Engine) Init() {
 	dispatcher.AddHandler(handlers.NewCommand("remove", t.removeWallet))
 	// /setemail command to set the email address
 	dispatcher.AddHandler(handlers.NewCommand("setemail", t.setEmailAddr))
+	// /testsenders command to test the senders
+	dispatcher.AddHandler(handlers.NewCommand("testalert", t.handleTestSenders))
 
 	// Handle all text messages.
 	dispatcher.AddHandler(handlers.NewMessage(message.Text, t.Listen))
@@ -133,18 +135,21 @@ func (t *Engine)Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 
 // start introduces the bot.
 func (t *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := ctx.EffectiveMessage.Reply(b, fmt.Sprintf("Welcome, I am %s.\n\nType /help to get an overview of what I can help you with.", b.User.Username), &gotgbot.SendMessageOpts{
-		ParseMode: "html",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send start message: %w", err)
-	}
-
 	// add the user to the database
-	err = db.DBInstance.AddUser(strconv.FormatInt(ctx.EffectiveMessage.Chat.Id, 10))
+	err := db.DBInstance.AddUser(strconv.FormatInt(ctx.EffectiveMessage.Chat.Id, 10))
 	if err != nil {
 		return fmt.Errorf("failed to add user to the database: %w", err)
 	}
+
+	// send the introduction message
+	msg := "Welcome to the ICON Validator Monitor Bot!\n\n"
+	msg += "With this bot you can monitor your ICON wallets. Register wallets that you want to keep track of. You can get an overview of all your registered wallets with /mywallets\n\nYou will also receive a weekly overview every Saturday and his bot will send you an alert if a validator is jailed and not earning rewards for the ICX you delegated to this validator. Set an email adres if you also want to receive messages via email.\n\n"
+
+	_, err = b.SendMessage(ctx.EffectiveMessage.Chat.Id, msg, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send message: %w", err)
+	}
+
 
 	return nil
 }
