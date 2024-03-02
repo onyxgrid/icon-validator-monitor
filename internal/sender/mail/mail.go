@@ -59,3 +59,21 @@ func NewMail() (*Mail, error) {
 		port: po,
 	}, nil
 }
+
+func (m Mail) SendAlert(to string, v string, w string) error {
+	e := email.NewEmail()
+	e.From = fmt.Sprintf("%s <%s>", m.Name, m.Account)
+	e.To = []string{to}
+	e.Subject = "ICON Validator Alert"
+	
+	// html message
+	msg := fmt.Sprintf("<html><body><p>Validator jailed: <b>%s</b></p><p>Wallet %s not earning rewards for the ICX delegated to this validator!</p></body></html>", v, w)
+	e.HTML = []byte(msg)
+
+	err := e.Send(fmt.Sprintf("%s:%s", m.SMTP,m.port), smtp.PlainAuth("", m.Account, m.Password, m.SMTP))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

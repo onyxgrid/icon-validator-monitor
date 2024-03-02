@@ -168,6 +168,27 @@ func (t *Engine) SendMessage(chatID string, message string) error {
 	return nil
 }
 
+// SendAlert sends an alert to a user
+func (t *Engine) SendAlert(chatID string, v string, w string) error {
+	// str to int64
+	i, err := strconv.ParseInt(chatID, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	opts := &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	}
+
+	msg := fmt.Sprintf("Validator jailed: *%s*\n%s is not earning rewards for the ICX delegated to this validator!", v, w)
+
+	_, err = t.bot.SendMessage(i, msg, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // UpdateValidators updates the validatormap every hour
 func (t *Engine) UpdateValidators() {
 	for {

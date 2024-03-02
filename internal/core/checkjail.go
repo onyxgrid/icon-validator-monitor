@@ -9,11 +9,11 @@ import (
 )
 
 func (t *Engine) checkJail() {
+	fmt.Println("Checking for jailed validators")
+	
 	// for testing set hx2e7db537ca3ff73336bee1bab4cf733a94ae769b to jail_flag 0x1
 	x := t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"]
 	x.JailFlags = "0x1"
-
-	// set x to the validators map
 	t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"] = x
 
 	// check for jail_flag
@@ -40,9 +40,9 @@ func (t *Engine) checkJail() {
 					
 					for _, d := range delegation.Delegations {
 						if d.Address == a {
-							err := t.SendMessage(uids, "Validator jailed: " + v.Name)
+							err := t.SendAlerts(uids, v.Name, w)
 							if err != nil {
-								log.Println("failed to send message: " + err.Error())
+								log.Println("failed to send alert: " + err.Error())
 							}
 						}
 					}
@@ -51,20 +51,9 @@ func (t *Engine) checkJail() {
 					omm := t.Icon.GetOmmVotes(w)
 					for _, o := range omm {
 						if o.Address == a {
-							for _, s := range t.Senders {
-								msg := fmt.Sprintf("Validator jailed: %s\nYou are not earning any rewards as long as the validator is jailed.", v.Name)
-
-								r := s.GetReceiver(uids)
-								fmt.Println("sending message to: " + r)
-								if r == "" {
-									continue
-								}
-
-								
-								err := s.SendMessage(r, msg)
-								if err != nil {
-									log.Println("failed to send message: " + err.Error())
-								}
+							err := t.SendAlerts(uids, v.Name, w)
+							if err != nil {
+								log.Println("failed to send alert: " + err.Error())
 							}
 						}
 					}
@@ -78,9 +67,9 @@ func (t *Engine) checkJail() {
 
 					for _, b := range bond.Bonds {
 						if b.Address == a {
-							err := t.SendMessage(uids, "Validator jailed: " + v.Name)
+							err := t.SendAlerts(uids, v.Name, w)
 							if err != nil {
-								log.Println("failed to send message: " + err.Error())
+								log.Println("failed to send alert: " + err.Error())
 							}
 						}
 					}
@@ -88,5 +77,15 @@ func (t *Engine) checkJail() {
 			}
 		}
 	}
+}
 
+// send alerts to all senders
+func (t *Engine) SendAlerts(chatID string, val string, w string) error {
+	for _, s := range t.Senders {
+		err := s.SendAlert(s.GetReceiver(chatID), val, w)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
