@@ -1,20 +1,17 @@
 package core
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 )
 
-func (t *Engine) checkJail() {
-	fmt.Println("Checking for jailed validators")
-	
+func (t *Engine) checkJail() {	
 	// for testing set hx2e7db537ca3ff73336bee1bab4cf733a94ae769b to jail_flag 0x1
-	x := t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"]
-	x.JailFlags = "0x1"
-	t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"] = x
+	// x := t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"]
+	// x.JailFlags = "0x1"
+	// t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"] = x
 
 	// check for jail_flag
 	for a, v := range t.Validators {

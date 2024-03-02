@@ -54,7 +54,8 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 			msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
 			
 		}
-		
+	
+		// get the omm votes
 		omm := t.Icon.GetOmmVotes(wallet)
 
 		if len(omm) > 0 {

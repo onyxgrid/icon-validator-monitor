@@ -170,7 +170,6 @@ func (t *Engine) SendMessage(chatID string, message string) error {
 
 // SendAlert sends an alert to a user
 func (t *Engine) SendAlert(chatID string, v string, w string) error {
-	// str to int64
 	i, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
 		return err
