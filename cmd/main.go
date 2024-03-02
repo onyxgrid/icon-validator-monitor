@@ -11,6 +11,8 @@ import (
 // todo:
 // - Add correct logging troughout the code
 // - Create a function that sends a weekly report to all users
+// - add a test command that sends a test-alert to the user its alert senders
+// - register all the commands to the botfather
 
 func main() {
 	err := godotenv.Load()
@@ -53,6 +55,9 @@ func main() {
 
 	// update the validators every hour
 	go engine.UpdateValidators()
+
+	// send the weekly report every saturday at 10:00
+	go engine.SendWeeklyReport()
 	
 	select{}
 }

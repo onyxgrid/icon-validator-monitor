@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/smtp"
 	"os"
+	"strings"
 
+	"github.com/gomarkdown/markdown"
 	"github.com/jordan-wright/email"
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 )
@@ -18,16 +20,24 @@ type Mail struct {
 }
 
 func (m Mail) SendMessage(to string, message string) error {
+	if to == "" {
+		return nil
+	}
+	
 	e := email.NewEmail()
 	e.From = fmt.Sprintf("%s <%s>", m.Name, m.Account)
 	e.To = []string{to}
 	e.Subject = "ICON Validator Info"
 	
-	// html message
-	msg := fmt.Sprintf("<html><body>%s</body></html>", message)
-	e.HTML = []byte(msg)
+	// Replace newline characters with <br> for HTML
+	messageWithBr := strings.ReplaceAll(message, "\n", "<br>")
+	
+	// Convert Markdown (with <br> for new lines) to HTML
+	mdToHTML := markdown.ToHTML([]byte(messageWithBr), nil, nil)
+	
+	e.HTML = mdToHTML // Set the HTML body
 
-	err := e.Send(fmt.Sprintf("%s:%s", m.SMTP,m.port), smtp.PlainAuth("", m.Account, m.Password, m.SMTP))
+	err := e.Send(fmt.Sprintf("%s:%s", m.SMTP, m.port), smtp.PlainAuth("", m.Account, m.Password, m.SMTP))
 	if err != nil {
 		return err
 	}
