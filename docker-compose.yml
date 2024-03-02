@@ -1,0 +1,8 @@
+version: '3'
+services:
+  icon-validator-monitor:
+    build: .
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
