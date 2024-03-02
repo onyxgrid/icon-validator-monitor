@@ -1,6 +1,7 @@
 version: '3'
 services:
   icon-validator-monitor:
+    container_name: icon-validator-monitor
     build: .
     volumes:
       - ./data:/app/data
