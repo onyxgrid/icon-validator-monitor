@@ -18,15 +18,14 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 )
 
-
 type Engine struct {
-	bot *gotgbot.Bot
-	logger *slog.Logger
+	bot                 *gotgbot.Bot
+	logger              *slog.Logger
 	registerWalletMsgId *int64
-	removeWalletMsgId *int64
-	setEmailAddrMsgId *int64
-	
-	Icon *icon.Icon
+	removeWalletMsgId   *int64
+	setEmailAddrMsgId   *int64
+
+	Icon       *icon.Icon
 	Validators map[string]model.ValidatorInfo
 
 	Senders []model.Sender
@@ -54,7 +53,7 @@ func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
 	defer logFile.Close()
 
 	logger := slog.New(slog.NewTextHandler(logFile, nil))
-	
+
 	validators, err := i.GetAllValidators()
 	if err != nil {
 		logger.Error("failed to get validators", err)
@@ -88,7 +87,7 @@ func (e *Engine) Init() {
 		},
 		MaxRoutines: ext.DefaultMaxRoutines,
 	})
-	
+
 	// /start command to introduce the bot
 	dispatcher.AddHandler(handlers.NewCommand("start", e.start))
 	// /register command to register a wallet
@@ -104,9 +103,9 @@ func (e *Engine) Init() {
 
 	// Handle all text messages.
 	dispatcher.AddHandler(handlers.NewMessage(message.Text, e.Listen))
-	
+
 	updater := ext.NewUpdater(dispatcher, nil)
-	
+
 	// Start receiving updates.
 	err := updater.StartPolling(e.bot, &ext.PollingOpts{
 		DropPendingUpdates: true,
@@ -126,7 +125,7 @@ func (e *Engine) Init() {
 }
 
 // Listen listens to messages
-func (t *Engine)Listen(b *gotgbot.Bot, ctx *ext.Context) error {
+func (t *Engine) Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 	// check if the message is a reply
 	if ctx.EffectiveMessage.ReplyToMessage != nil {
 		// check if the message is a reply to the registerWallet message
@@ -140,7 +139,7 @@ func (t *Engine)Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 			return t.handleSetEmailAddrReply(ctx)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -149,7 +148,7 @@ func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 	// add the user to the database
 	err := db.DBInstance.AddUser(strconv.FormatInt(ctx.EffectiveMessage.Chat.Id, 10))
 	if err != nil {
-		e.logger.Error("failed to add user to the database", err, "user: ",ctx.EffectiveMessage.Chat.Id)
+		e.logger.Error("failed to add user to the database", err, "user: ", ctx.EffectiveMessage.Chat.Id)
 		return fmt.Errorf("failed to add user to the database: %w", err)
 	}
 
@@ -161,7 +160,6 @@ func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
-
 
 	return nil
 }
@@ -227,4 +225,3 @@ func (e *Engine) UpdateValidators() {
 		time.Sleep(time.Hour)
 	}
 }
-

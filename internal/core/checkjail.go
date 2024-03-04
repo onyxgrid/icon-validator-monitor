@@ -7,7 +7,7 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
 )
 
-func (t *Engine) checkJail() {	
+func (t *Engine) checkJail() {
 	// for testing set hx2e7db537ca3ff73336bee1bab4cf733a94ae769b to jail_flag 0x1
 	// x := t.Validators["hx2e7db537ca3ff73336bee1bab4cf733a94ae769b"]
 	// x.JailFlags = "0x1"
@@ -34,7 +34,7 @@ func (t *Engine) checkJail() {
 						log.Println("failed to get delegation info: " + err.Error())
 						return
 					}
-					
+
 					for _, d := range delegation.Delegations {
 						if d.Address == a {
 							err := t.SendAlerts(uids, v.Name, w)

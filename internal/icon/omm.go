@@ -27,7 +27,7 @@ func (i *Icon) GetOmmVotes(address string) []model.OmmResponse {
 		fmt.Println("Response is not of type map[string]interface{}")
 		return nil
 	}
-	
+
 	var ommVotes []model.OmmResponse
 	for _, response := range responses {
 		responseData, ok := response.(map[string]interface{})
@@ -51,11 +51,10 @@ func (i *Icon) GetOmmVotes(address string) []model.OmmResponse {
 
 		// adjust this, votes should be post delegation ratio multiplied
 
-
 		ov := model.OmmResponse{
-			Address: validator,
+			Address:    validator,
 			VotesInIcx: votesbi,
-			Name: name,
+			Name:       name,
 		}
 
 		ommVotes = append(ommVotes, ov)

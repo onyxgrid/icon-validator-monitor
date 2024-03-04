@@ -59,7 +59,7 @@ func (d *DB) AddUser(id string) error {
 func (d *DB) GetUserEmail(id string) string {
 	var email string
 	err := d.db.QueryRow("SELECT email FROM users WHERE id = ?", id).Scan(&email)
-	if err != nil{
+	if err != nil {
 		return ""
 	}
 	return email
@@ -75,7 +75,7 @@ func (d *DB) SetUserEmail(id, email string) error {
 }
 
 // GetUserWallets returns a slice of wallets of a user given its id. If the user does not exist, or has no wallets, it returns an empty slice.
-func (d *DB) GetUserWallets(id string) ([]string) {
+func (d *DB) GetUserWallets(id string) []string {
 	var wallets string
 	err := d.db.QueryRow("SELECT wallets FROM users WHERE id = ?", id).Scan(&wallets)
 	if err != nil {
@@ -101,8 +101,8 @@ func (d *DB) AddUserWallet(id, wallet string) error {
 	} else {
 		// add the wallet to the db
 		wallets = append(wallets, wallet)
-        // Join the wallets into a comma-separated string
-        walletString := strings.Join(wallets, ",")
+		// Join the wallets into a comma-separated string
+		walletString := strings.Join(wallets, ",")
 
 		_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", walletString, id)
 		return err
@@ -152,4 +152,3 @@ func (d *DB) GetAllUserIDs() ([]int64, error) {
 	}
 	return users, nil
 }
-

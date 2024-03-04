@@ -21,7 +21,7 @@ func (e *Engine) SendWeeklyReport() {
 				next = next.AddDate(0, 0, 1)
 			}
 			time.Sleep(next.Sub(now))
-			
+
 			uids, err := db.DBInstance.GetAllUserIDs()
 			if err != nil {
 				e.logger.Error("failed to get all user ids", err)

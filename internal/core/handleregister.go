@@ -33,14 +33,14 @@ func (e *Engine) registerWallet(b *gotgbot.Bot, ctx *ext.Context) error {
 func (e *Engine) handleRegisterReply(ctx *ext.Context) error {
 	msg := ctx.EffectiveMessage.Text
 	chatID := ctx.EffectiveMessage.Chat.Id
-	
+
 	// check if the message is a valid ICON wallet address
 	if !icon.IsValidIconAddress(msg) {
-		err := e.SendMessage(strconv.FormatInt(chatID, 10), msg + " is not a valid ICON wallet address")
+		err := e.SendMessage(strconv.FormatInt(chatID, 10), msg+" is not a valid ICON wallet address")
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
 		}
-		
+
 		e.registerWalletMsgId = nil
 
 		return nil
@@ -51,7 +51,7 @@ func (e *Engine) handleRegisterReply(ctx *ext.Context) error {
 		// check if the wallet is already registered
 		for _, wallet := range wallets {
 			if wallet == msg {
-				err := e.SendMessage(strconv.FormatInt(chatID, 10), msg + " is already registered.")
+				err := e.SendMessage(strconv.FormatInt(chatID, 10), msg+" is already registered.")
 				if err != nil {
 					e.registerWalletMsgId = nil
 					return fmt.Errorf("failed to send message: %w", err)
@@ -69,9 +69,9 @@ func (e *Engine) handleRegisterReply(ctx *ext.Context) error {
 			e.registerWalletMsgId = nil
 			return fmt.Errorf("failed to add wallet to the database: %w", err)
 		}
-		
+
 		// Send the message to the chat
-		err = e.SendMessage(strconv.FormatInt(chatID, 10), msg + " has been registered.")
+		err = e.SendMessage(strconv.FormatInt(chatID, 10), msg+" has been registered.")
 		if err != nil {
 			e.registerWalletMsgId = nil
 			return fmt.Errorf("failed to send message: %w", err)
@@ -118,9 +118,9 @@ func (e *Engine) handleRemoveReply(ctx *ext.Context) error {
 				e.removeWalletMsgId = nil
 				return fmt.Errorf("failed to remove wallet from the database: %w", err)
 			}
-			
+
 			// Send the message to the chat
-			err = e.SendMessage(strconv.FormatInt(chatID, 10), msg + " has been removed.")
+			err = e.SendMessage(strconv.FormatInt(chatID, 10), msg+" has been removed.")
 			if err != nil {
 				e.removeWalletMsgId = nil
 				return fmt.Errorf("failed to send message: %w", err)
@@ -134,7 +134,7 @@ func (e *Engine) handleRemoveReply(ctx *ext.Context) error {
 	}
 
 	// Send the message to the chat
-	err := e.SendMessage(strconv.FormatInt(chatID, 10), msg + " is unregistered.")
+	err := e.SendMessage(strconv.FormatInt(chatID, 10), msg+" is unregistered.")
 	if err != nil {
 		e.removeWalletMsgId = nil
 		return fmt.Errorf("failed to send message: %w", err)

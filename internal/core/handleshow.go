@@ -24,7 +24,7 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	msg := ""
-	
+
 	for _, wallet := range wallets {
 		// format address to hx012...h921
 		f := fmt.Sprintf("%s...%s\n", wallet[:6], wallet[len(wallet)-6:])
@@ -46,15 +46,15 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nvotes: `%s` ICX\n", d.Name, d.Address, fl)
 
 			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[d.Address].CommissionRate)
-		
+
 			edr, err := icon.EstimateReward(e.Validators[d.Address], d.Value)
 			if err != nil {
 				continue
 			}
 			msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
-			
+
 		}
-	
+
 		// get the omm votes
 		omm := e.Icon.GetOmmVotes(wallet)
 
@@ -66,7 +66,7 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 			fl := util.FormatIconNumber(o.VotesInIcx)
 
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nOMM votes: `%s ICX`\n", o.Name, o.Address, fl)
-			
+
 			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[o.Address].CommissionRate)
 
 			edr, err := icon.EstimateReward(e.Validators[o.Address], o.VotesInIcx)
@@ -75,7 +75,7 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 			}
 			msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
 		}
-		
+
 		// get the bond info
 		bond, err := e.Icon.GetBonds(wallet)
 		if err != nil {
@@ -90,7 +90,7 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		for _, b := range bond.Bonds {
 			fl := util.FormatIconNumber(b.Value)
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nBonded: `%s ICX`\n", b.Name, b.Address, fl)
-			
+
 			edr, err := icon.EstimateReward(e.Validators[b.Address], b.Value)
 			if err != nil {
 				continue

@@ -18,7 +18,7 @@ type Icon struct {
 }
 
 // NewIcon creates a new Icon client
-func NewIcon() (*Icon, error){
+func NewIcon() (*Icon, error) {
 	rpc := os.Getenv("ICON_RPC")
 	if rpc == "" {
 		return nil, fmt.Errorf("ICON_RPC is not set")
@@ -47,7 +47,7 @@ func IsValidIconAddress(address string) bool {
 // getDelegation returns the delegation of a wallet
 func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 	params := map[string]interface{}{
-		"address": address, 
+		"address": address,
 	}
 
 	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getDelegation", params)
@@ -60,31 +60,31 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 	if !ok {
 		return model.DelegationResponse{}, fmt.Errorf("response is not of type map[string]interface{}")
 	}
-	
+
 	// Extracting and assigning values to the struct fields
 	res := model.DelegationResponse{
 		TotalDelegated: fmt.Sprintf("%v", responseData["totalDelegated"]),
 		VotingPower:    fmt.Sprintf("%v", responseData["votingPower"]),
 	}
-	
+
 	delegations, ok := responseData["delegations"].([]interface{})
 	if !ok {
 		return model.DelegationResponse{}, fmt.Errorf("delegations field is not of type []interface{}")
 	}
-	
+
 	for _, delegationData := range delegations {
 		delegation, ok := delegationData.(map[string]interface{})
 		if !ok {
 			fmt.Println("Delegation data is not of type map[string]interface{}")
 			continue
 		}
-	
+
 		address, ok := delegation["address"].(string)
 		if !ok {
 			fmt.Println("Address field is not of type string")
 			continue
 		}
-	
+
 		value, ok := delegation["value"].(string)
 		if !ok {
 			fmt.Println("Value field is not of type string")
@@ -97,7 +97,7 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 			fmt.Println("Failed to convert value to big.Int")
 			continue
 		}
-	
+
 		res.Delegations = append(res.Delegations, model.Delegation{
 			Address: address,
 			Value:   valueBigInt,
@@ -113,11 +113,10 @@ func (i *Icon) GetDelegation(address string) (model.DelegationResponse, error) {
 	return res, nil
 }
 
-
 // GetBonds returns the bonds of a wallet
 func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 	params := map[string]interface{}{
-		"address": address, 
+		"address": address,
 	}
 
 	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getBond", params)
@@ -187,7 +186,7 @@ func (i *Icon) GetBonds(address string) (model.BondResponse, error) {
 // GetValidatorName returns the name of a validator given its address
 func (i *Icon) GetValidatorName(address string) (string, error) {
 	params := map[string]interface{}{
-		"address": address, 
+		"address": address,
 	}
 
 	callObject := transactions.CallBuilder("cx0000000000000000000000000000000000000000", "getPRep", params)
@@ -210,7 +209,7 @@ func (i *Icon) GetValidatorName(address string) (string, error) {
 }
 
 // GetAllValidators returns the list of all validators
-func (i *Icon) GetAllValidators() ([]model.ValidatorInfo, error){
+func (i *Icon) GetAllValidators() ([]model.ValidatorInfo, error) {
 	u := "https://tracker.icon.community/api/v1/governance/preps"
 
 	response, err := http.Get(u)

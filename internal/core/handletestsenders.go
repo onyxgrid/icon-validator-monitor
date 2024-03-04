@@ -11,7 +11,7 @@ import (
 
 func (e *Engine) handleTestSenders(b *gotgbot.Bot, ctx *ext.Context) error {
 	uid := fmt.Sprintf("%d", ctx.EffectiveMessage.Chat.Id)
-	
+
 	msg := "A test-alert will be send.\n\n"
 	email := db.DBInstance.GetUserEmail(uid)
 	if email == "" {

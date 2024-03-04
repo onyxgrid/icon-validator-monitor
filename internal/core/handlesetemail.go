@@ -40,7 +40,7 @@ func (e *Engine) handleSetEmailAddrReply(ctx *ext.Context) error {
 	}
 
 	// Send the message to the chat
-	err = e.SendMessage(strconv.FormatInt(chatID, 10), msg + " has been set.")
+	err = e.SendMessage(strconv.FormatInt(chatID, 10), msg+" has been set.")
 	if err != nil {
 		e.setEmailAddrMsgId = nil
 		return fmt.Errorf("failed to send message: %w", err)

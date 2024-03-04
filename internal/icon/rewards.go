@@ -43,6 +43,6 @@ func EstimateReward(validator model.ValidatorInfo, votes *big.Int) (*big.Int, er
 
 	// add a 100 x, not sure why, probably wrong but yea...
 	res.Mul(&res, big.NewInt(100))
-	
+
 	return &res, nil
 }
