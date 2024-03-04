@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/util"
 )
 
-func (t *Engine) SendWeeklyReport() {
+func (e *Engine) SendWeeklyReport() {
 	for {
 		if time.Now().Weekday() == time.Saturday {
 			// get time now, calculate the time until the next 10:00, and sleep for that time
@@ -25,7 +24,7 @@ func (t *Engine) SendWeeklyReport() {
 			
 			uids, err := db.DBInstance.GetAllUserIDs()
 			if err != nil {
-				log.Println("failed to get all users: " + err.Error())
+				e.logger.Error("failed to get all user ids", err)
 				return
 			}
 
@@ -39,9 +38,9 @@ func (t *Engine) SendWeeklyReport() {
 					msg += fmt.Sprintf("*WALLET* - [%s](https://icontracker.xyz/address/%s)\n", f, w)
 
 					// get the delegation info
-					delegation, err := t.Icon.GetDelegation(w)
+					delegation, err := e.Icon.GetDelegation(w)
 					if err != nil {
-						log.Println("failed to get delegation info: " + err.Error())
+						e.logger.Error("failed to get delegation info: " + err.Error())
 						return
 					}
 
@@ -54,10 +53,11 @@ func (t *Engine) SendWeeklyReport() {
 						fl := util.FormatIconNumber(d.Value)
 						msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nvotes: `%s` ICX\n", d.Name, d.Address, fl)
 
-						msg += fmt.Sprintf("Commision Rate: `%v%%`\n", t.Validators[d.Address].CommissionRate)
+						msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[d.Address].CommissionRate)
 
-						edr, err := icon.EstimateReward(t.Validators[d.Address], d.Value)
+						edr, err := icon.EstimateReward(e.Validators[d.Address], d.Value)
 						if err != nil {
+							e.logger.Error("d: failed to estimate reward: " + err.Error())
 							continue
 						}
 						msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
@@ -65,7 +65,7 @@ func (t *Engine) SendWeeklyReport() {
 					}
 
 					// get the omm votes
-					omm := t.Icon.GetOmmVotes(w)
+					omm := e.Icon.GetOmmVotes(w)
 
 					if len(omm) > 0 {
 						msg += "`OMM votes:`\n"
@@ -77,19 +77,20 @@ func (t *Engine) SendWeeklyReport() {
 
 						msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nOMM votes: `%s ICX`\n", o.Name, o.Address, fl)
 
-						msg += fmt.Sprintf("Commision Rate: `%v%%`\n", t.Validators[o.Address].CommissionRate)
+						msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[o.Address].CommissionRate)
 
-						edr, err := icon.EstimateReward(t.Validators[o.Address], o.VotesInIcx)
+						edr, err := icon.EstimateReward(e.Validators[o.Address], o.VotesInIcx)
 						if err != nil {
+							e.logger.Error("o: failed to estimate reward: " + err.Error())
 							continue
 						}
 						msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
 					}
 
 					// get the bonds
-					bond, err := t.Icon.GetBonds(w)
+					bond, err := e.Icon.GetBonds(w)
 					if err != nil {
-						log.Println("failed to get bond info: " + err.Error())
+						e.logger.Error("failed to get bond info: " + err.Error())
 						return
 					}
 
@@ -102,10 +103,11 @@ func (t *Engine) SendWeeklyReport() {
 						fl := util.FormatIconNumber(b.Value)
 						msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nBond: `%s` ICX\n", b.Name, b.Address, fl)
 
-						msg += fmt.Sprintf("Commision Rate: `%v%%`\n", t.Validators[b.Address].CommissionRate)
+						msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[b.Address].CommissionRate)
 
-						edr, err := icon.EstimateReward(t.Validators[b.Address], b.Value)
+						edr, err := icon.EstimateReward(e.Validators[b.Address], b.Value)
 						if err != nil {
+							e.logger.Error("b: failed to estimate reward: " + err.Error())
 							continue
 						}
 						msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
@@ -113,10 +115,10 @@ func (t *Engine) SendWeeklyReport() {
 				}
 
 				// send message to all senders
-				for _, s := range t.Senders {
+				for _, s := range e.Senders {
 					err := s.SendMessage(s.GetReceiver(uids), msg)
 					if err != nil {
-						log.Println("failed to send message: " + err.Error())
+						e.logger.Error("failed to send message: " + err.Error())
 					}
 				}
 			}

@@ -12,11 +12,11 @@ import (
 )
 
 // showWallets shows the wallets of a user, and the delegation info
-func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
+func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	chatID := ctx.EffectiveMessage.Chat.Id
 	wallets := db.DBInstance.GetUserWallets(strconv.FormatInt(chatID, 10))
 	if wallets == nil {
-		err := t.SendMessage(strconv.FormatInt(chatID, 10), "You have no registered wallets.")
+		err := e.SendMessage(strconv.FormatInt(chatID, 10), "You have no registered wallets.")
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
 		}
@@ -31,7 +31,7 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		msg += fmt.Sprintf("*WALLET* - [%s](https://icontracker.xyz/address/%s)\n", f, wallet)
 
 		// get the delegation info
-		delegation, err := t.Icon.GetDelegation(wallet)
+		delegation, err := e.Icon.GetDelegation(wallet)
 		if err != nil {
 			return fmt.Errorf("failed to get delegation info: %w", err)
 		}
@@ -45,9 +45,9 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 			fl := util.FormatIconNumber(d.Value)
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nvotes: `%s` ICX\n", d.Name, d.Address, fl)
 
-			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", t.Validators[d.Address].CommissionRate)
+			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[d.Address].CommissionRate)
 		
-			edr, err := icon.EstimateReward(t.Validators[d.Address], d.Value)
+			edr, err := icon.EstimateReward(e.Validators[d.Address], d.Value)
 			if err != nil {
 				continue
 			}
@@ -56,7 +56,7 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		}
 	
 		// get the omm votes
-		omm := t.Icon.GetOmmVotes(wallet)
+		omm := e.Icon.GetOmmVotes(wallet)
 
 		if len(omm) > 0 {
 			msg += "`OMM votes:`\n"
@@ -67,9 +67,9 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nOMM votes: `%s ICX`\n", o.Name, o.Address, fl)
 			
-			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", t.Validators[o.Address].CommissionRate)
+			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[o.Address].CommissionRate)
 
-			edr, err := icon.EstimateReward(t.Validators[o.Address], o.VotesInIcx)
+			edr, err := icon.EstimateReward(e.Validators[o.Address], o.VotesInIcx)
 			if err != nil {
 				continue
 			}
@@ -77,7 +77,7 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		}
 		
 		// get the bond info
-		bond, err := t.Icon.GetBonds(wallet)
+		bond, err := e.Icon.GetBonds(wallet)
 		if err != nil {
 			return fmt.Errorf("failed to get bond info: %w", err)
 		}
@@ -91,7 +91,7 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 			fl := util.FormatIconNumber(b.Value)
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nBonded: `%s ICX`\n", b.Name, b.Address, fl)
 			
-			edr, err := icon.EstimateReward(t.Validators[b.Address], b.Value)
+			edr, err := icon.EstimateReward(e.Validators[b.Address], b.Value)
 			if err != nil {
 				continue
 			}
@@ -100,7 +100,7 @@ func (t *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Send the message to the chat
-	err := t.SendMessage(strconv.FormatInt(chatID, 10), msg)
+	err := e.SendMessage(strconv.FormatInt(chatID, 10), msg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}

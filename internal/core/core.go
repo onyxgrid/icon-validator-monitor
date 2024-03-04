@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -20,6 +21,7 @@ import (
 
 type Engine struct {
 	bot *gotgbot.Bot
+	logger *slog.Logger
 	registerWalletMsgId *int64
 	removeWalletMsgId *int64
 	setEmailAddrMsgId *int64
@@ -45,8 +47,17 @@ func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
 		panic("failed to create new bot: " + err.Error())
 	}
 
+	logFile, err := os.OpenFile("data/log.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log file: %w", err)
+	}
+	defer logFile.Close()
+
+	logger := slog.New(slog.NewTextHandler(logFile, nil))
+	
 	validators, err := i.GetAllValidators()
 	if err != nil {
+		logger.Error("failed to get validators", err)
 		return nil, fmt.Errorf("failed to get validators: %w", err)
 	}
 
@@ -55,7 +66,7 @@ func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
 		validatorsMap[v.Address] = v
 	}
 
-	return &Engine{bot: b, Icon: i, Validators: validatorsMap}, nil
+	return &Engine{bot: b, Icon: i, Validators: validatorsMap, logger: logger}, nil
 }
 
 func (t *Engine) RegisterSender(s model.Sender) {
@@ -67,37 +78,37 @@ func (t *Engine) GetReceiver(uid string) string {
 	return uid
 }
 
-func (t *Engine) Init() {
+func (e *Engine) Init() {
 	// Create updater and dispatcher.
 	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{
 		// If an error is returned by a handler, log it and continue going.
 		Error: func(b *gotgbot.Bot, ctx *ext.Context, err error) ext.DispatcherAction {
-			log.Println("an error occurred while handling update:", err.Error())
+			e.logger.Error("error creating dispatcher", err)
 			return ext.DispatcherActionNoop
 		},
 		MaxRoutines: ext.DefaultMaxRoutines,
 	})
 	
 	// /start command to introduce the bot
-	dispatcher.AddHandler(handlers.NewCommand("start", t.start))
+	dispatcher.AddHandler(handlers.NewCommand("start", e.start))
 	// /register command to register a wallet
-	dispatcher.AddHandler(handlers.NewCommand("register", t.registerWallet))
+	dispatcher.AddHandler(handlers.NewCommand("register", e.registerWallet))
 	// /wallets command to show the wallets of a user
-	dispatcher.AddHandler(handlers.NewCommand("mywallets", t.showWallets))
+	dispatcher.AddHandler(handlers.NewCommand("mywallets", e.showWallets))
 	// /remove command to remove a wallet
-	dispatcher.AddHandler(handlers.NewCommand("remove", t.removeWallet))
+	dispatcher.AddHandler(handlers.NewCommand("remove", e.removeWallet))
 	// /setemail command to set the email address
-	dispatcher.AddHandler(handlers.NewCommand("setemail", t.setEmailAddr))
+	dispatcher.AddHandler(handlers.NewCommand("setemail", e.setEmailAddr))
 	// /testsenders command to test the senders
-	dispatcher.AddHandler(handlers.NewCommand("testalert", t.handleTestSenders))
+	dispatcher.AddHandler(handlers.NewCommand("testalert", e.handleTestSenders))
 
 	// Handle all text messages.
-	dispatcher.AddHandler(handlers.NewMessage(message.Text, t.Listen))
+	dispatcher.AddHandler(handlers.NewMessage(message.Text, e.Listen))
 	
 	updater := ext.NewUpdater(dispatcher, nil)
 	
 	// Start receiving updates.
-	err := updater.StartPolling(t.bot, &ext.PollingOpts{
+	err := updater.StartPolling(e.bot, &ext.PollingOpts{
 		DropPendingUpdates: true,
 		GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
 			Timeout: 9,
@@ -109,7 +120,7 @@ func (t *Engine) Init() {
 	if err != nil {
 		panic("failed to start polling: " + err.Error())
 	}
-	log.Printf("%s has been started...\n", t.bot.User.Username)
+	log.Printf("%s has been started...\n", e.bot.User.Username)
 
 	updater.Idle()
 }
@@ -134,10 +145,11 @@ func (t *Engine)Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 // start introduces the bot.
-func (t *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
+func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 	// add the user to the database
 	err := db.DBInstance.AddUser(strconv.FormatInt(ctx.EffectiveMessage.Chat.Id, 10))
 	if err != nil {
+		e.logger.Error("failed to add user to the database", err, "user: ",ctx.EffectiveMessage.Chat.Id)
 		return fmt.Errorf("failed to add user to the database: %w", err)
 	}
 
@@ -155,7 +167,7 @@ func (t *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 // SendMessage sends a message to a chat
-func (t *Engine) SendMessage(chatID string, message string) error {
+func (e *Engine) SendMessage(chatID string, message string) error {
 	// str to int64
 	i, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
@@ -166,15 +178,16 @@ func (t *Engine) SendMessage(chatID string, message string) error {
 		ParseMode: "Markdown",
 	}
 
-	_, err = t.bot.SendMessage(i, message, opts)
+	_, err = e.bot.SendMessage(i, message, opts)
 	if err != nil {
+		e.logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
 		return err
 	}
 	return nil
 }
 
 // SendAlert sends an alert to a user
-func (t *Engine) SendAlert(chatID string, v string, w string) error {
+func (e *Engine) SendAlert(chatID string, v string, w string) error {
 	i, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
 		return err
@@ -186,19 +199,20 @@ func (t *Engine) SendAlert(chatID string, v string, w string) error {
 
 	msg := fmt.Sprintf("Validator jailed: *%s*\n%s is not earning rewards for the ICX delegated to this validator!", v, w)
 
-	_, err = t.bot.SendMessage(i, msg, opts)
+	_, err = e.bot.SendMessage(i, msg, opts)
 	if err != nil {
+		e.logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", v, "wallet: ", w)
 		return err
 	}
 	return nil
 }
 
 // UpdateValidators updates the validatormap every hour
-func (t *Engine) UpdateValidators() {
+func (e *Engine) UpdateValidators() {
 	for {
-		validators, err := t.Icon.GetAllValidators()
+		validators, err := e.Icon.GetAllValidators()
 		if err != nil {
-			log.Println("failed to get validators: " + err.Error())
+			e.logger.Error("failed to get validators", err)
 			continue
 		}
 
@@ -207,8 +221,8 @@ func (t *Engine) UpdateValidators() {
 			validatorsMap[v.Address] = v
 		}
 
-		t.Validators = validatorsMap
-		t.checkJail()
+		e.Validators = validatorsMap
+		e.checkJail()
 
 		time.Sleep(time.Hour)
 	}
