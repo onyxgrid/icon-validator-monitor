@@ -81,6 +81,7 @@ func (t *Engine) SendAlerts(chatID string, val string, w string) error {
 	for _, s := range t.Senders {
 		err := s.SendAlert(s.GetReceiver(chatID), val, w)
 		if err != nil {
+			t.logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", val, "wallet: ", w)
 			return err
 		}
 	}

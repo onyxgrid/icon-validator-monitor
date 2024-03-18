@@ -222,6 +222,6 @@ func (e *Engine) UpdateValidators() {
 		e.Validators = validatorsMap
 		e.checkJail()
 
-		time.Sleep(time.Hour)
+		time.Sleep(time.Minute)
 	}
 }
