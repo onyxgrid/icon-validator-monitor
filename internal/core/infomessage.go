@@ -24,7 +24,7 @@ func (e *Engine) SendWeeklyReport() {
 
 			uids, err := db.DBInstance.GetAllUserIDs()
 			if err != nil {
-				e.logger.Error("failed to get all user ids", err)
+				e.Logger.Error("failed to get all user ids", err)
 				return
 			}
 
@@ -40,7 +40,7 @@ func (e *Engine) SendWeeklyReport() {
 					// get the delegation info
 					delegation, err := e.Icon.GetDelegation(w)
 					if err != nil {
-						e.logger.Error("failed to get delegation info: " + err.Error())
+						e.Logger.Error("failed to get delegation info: " + err.Error())
 						return
 					}
 
@@ -57,7 +57,7 @@ func (e *Engine) SendWeeklyReport() {
 
 						edr, err := icon.EstimateReward(e.Validators[d.Address], d.Value)
 						if err != nil {
-							e.logger.Error("d: failed to estimate reward: " + err.Error())
+							e.Logger.Error("d: failed to estimate reward: " + err.Error())
 							continue
 						}
 						msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
@@ -81,7 +81,7 @@ func (e *Engine) SendWeeklyReport() {
 
 						edr, err := icon.EstimateReward(e.Validators[o.Address], o.VotesInIcx)
 						if err != nil {
-							e.logger.Error("o: failed to estimate reward: " + err.Error())
+							e.Logger.Error("o: failed to estimate reward: " + err.Error())
 							continue
 						}
 						msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
@@ -90,7 +90,7 @@ func (e *Engine) SendWeeklyReport() {
 					// get the bonds
 					bond, err := e.Icon.GetBonds(w)
 					if err != nil {
-						e.logger.Error("failed to get bond info: " + err.Error())
+						e.Logger.Error("failed to get bond info: " + err.Error())
 						return
 					}
 
@@ -107,7 +107,7 @@ func (e *Engine) SendWeeklyReport() {
 
 						edr, err := icon.EstimateReward(e.Validators[b.Address], b.Value)
 						if err != nil {
-							e.logger.Error("b: failed to estimate reward: " + err.Error())
+							e.Logger.Error("b: failed to estimate reward: " + err.Error())
 							continue
 						}
 						msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
@@ -118,7 +118,7 @@ func (e *Engine) SendWeeklyReport() {
 				for _, s := range e.Senders {
 					err := s.SendMessage(s.GetReceiver(uids), msg)
 					if err != nil {
-						e.logger.Error("failed to send message: " + err.Error())
+						e.Logger.Error("failed to send message: " + err.Error())
 					}
 				}
 			}

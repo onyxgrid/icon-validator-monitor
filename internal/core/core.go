@@ -20,7 +20,7 @@ import (
 
 type Engine struct {
 	bot                 *gotgbot.Bot
-	logger              *slog.Logger
+	Logger              *slog.Logger
 	registerWalletMsgId *int64
 	removeWalletMsgId   *int64
 	setEmailAddrMsgId   *int64
@@ -52,11 +52,11 @@ func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
 	}
 	defer logFile.Close()
 
-	logger := slog.New(slog.NewTextHandler(logFile, nil))
+	Logger := slog.New(slog.NewTextHandler(logFile, nil))
 
 	validators, err := i.GetAllValidators()
 	if err != nil {
-		logger.Error("failed to get validators", err)
+		Logger.Error("failed to get validators", err)
 		return nil, fmt.Errorf("failed to get validators: %w", err)
 	}
 
@@ -65,7 +65,7 @@ func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
 		validatorsMap[v.Address] = v
 	}
 
-	return &Engine{bot: b, Icon: i, Validators: validatorsMap, logger: logger}, nil
+	return &Engine{bot: b, Icon: i, Validators: validatorsMap, Logger: Logger}, nil
 }
 
 func (t *Engine) RegisterSender(s model.Sender) {
@@ -82,7 +82,7 @@ func (e *Engine) Init() {
 	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{
 		// If an error is returned by a handler, log it and continue going.
 		Error: func(b *gotgbot.Bot, ctx *ext.Context, err error) ext.DispatcherAction {
-			e.logger.Error("error creating dispatcher", err)
+			e.Logger.Error("error creating dispatcher", err)
 			return ext.DispatcherActionNoop
 		},
 		MaxRoutines: ext.DefaultMaxRoutines,
@@ -117,6 +117,7 @@ func (e *Engine) Init() {
 		},
 	})
 	if err != nil {
+		e.Logger.Error("failed to start polling", err)
 		panic("failed to start polling: " + err.Error())
 	}
 	log.Printf("%s has been started...\n", e.bot.User.Username)
@@ -148,7 +149,7 @@ func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 	// add the user to the database
 	err := db.DBInstance.AddUser(strconv.FormatInt(ctx.EffectiveMessage.Chat.Id, 10))
 	if err != nil {
-		e.logger.Error("failed to add user to the database", err, "user: ", ctx.EffectiveMessage.Chat.Id)
+		e.Logger.Error("failed to add user to the database", err, "user: ", ctx.EffectiveMessage.Chat.Id)
 		return fmt.Errorf("failed to add user to the database: %w", err)
 	}
 
@@ -178,7 +179,7 @@ func (e *Engine) SendMessage(chatID string, message string) error {
 
 	_, err = e.bot.SendMessage(i, message, opts)
 	if err != nil {
-		e.logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
+		e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
 		return err
 	}
 	return nil
@@ -199,7 +200,7 @@ func (e *Engine) SendAlert(chatID string, v string, w string) error {
 
 	_, err = e.bot.SendMessage(i, msg, opts)
 	if err != nil {
-		e.logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", v, "wallet: ", w)
+		e.Logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", v, "wallet: ", w)
 		return err
 	}
 	return nil
@@ -210,7 +211,7 @@ func (e *Engine) UpdateValidators() {
 	for {
 		validators, err := e.Icon.GetAllValidators()
 		if err != nil {
-			e.logger.Error("failed to get validators", err)
+			e.Logger.Error("failed to get validators", err)
 			continue
 		}
 

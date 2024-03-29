@@ -41,6 +41,8 @@ func main() {
 		panic(err)
 	}
 
+	engine.Logger.Info("Engine created")
+
 	go engine.Init()
 
 	// Register the senders that will send the notifications
