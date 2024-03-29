@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/joho/godotenv"
 	"github.com/paulrouge/icon-validator-monitor/internal/core"
 	"github.com/paulrouge/icon-validator-monitor/internal/db"
@@ -35,13 +37,19 @@ func main() {
 		panic(err)
 	}
 
-	engine, err := core.NewEngine(db.DBInstance, client)
+	// Make logfile
+	logFile, err := os.OpenFile("data/log.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		// this should be added to the log. (failed on parsing res into validotrinfo before...)
+		panic(err)
+	}
+	defer logFile.Close()
+
+	engine, err := core.NewEngine(db.DBInstance, client, logFile)
+	if err != nil {
 		panic(err)
 	}
 
-	engine.Logger.Info("Engine created")
+	engine.Logger.Info("Service starting...")
 
 	go engine.Init()
 

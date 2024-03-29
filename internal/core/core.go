@@ -31,7 +31,7 @@ type Engine struct {
 	Senders []model.Sender
 }
 
-func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
+func NewEngine(d *db.DB, i *icon.Icon, l *os.File) (*Engine, error) {
 	token := os.Getenv("TELEGRAM_TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("TELEGRAM_TOKEN is not set")
@@ -46,14 +46,7 @@ func NewEngine(d *db.DB, i *icon.Icon) (*Engine, error) {
 		panic("failed to create new bot: " + err.Error())
 	}
 
-	logFile, err := os.OpenFile("data/log.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open log file: %w", err)
-	}
-	defer logFile.Close()
-
-	Logger := slog.New(slog.NewTextHandler(logFile, nil))
-
+	Logger := slog.New(slog.NewTextHandler(l, nil))
 	validators, err := i.GetAllValidators()
 	if err != nil {
 		Logger.Error("failed to get validators", err)
