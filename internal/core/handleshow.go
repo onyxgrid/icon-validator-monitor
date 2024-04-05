@@ -67,13 +67,10 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 
 			msg += fmt.Sprintf("Validator: [%s](https://icontracker.xyz/address/%s)\nOMM votes: `%s ICX`\n", o.Name, o.Address, fl)
 
-			msg += fmt.Sprintf("Commision Rate: `%v%%`\n", e.Validators[o.Address].CommissionRate)
-
-			edr, err := icon.EstimateReward(e.Validators[o.Address], o.VotesInIcx)
-			if err != nil {
-				continue
-			}
-			msg += fmt.Sprintf("Est. daily reward: `$%s`\n\n", util.FormatIconNumber(edr))
+			/*
+				This could be custimonized to show the custom rewards for each validator
+				and extend msg with the custom rewards
+			*/
 		}
 
 		// get the bond info
