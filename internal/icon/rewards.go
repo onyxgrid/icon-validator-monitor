@@ -11,6 +11,11 @@ func EstimateReward(validator model.ValidatorInfo, votes *big.Int) (*big.Int, er
 	daily := big.NewFloat(validator.RewardDailyUSD)
 	daily.Mul(daily, big.NewFloat(1e18))
 
+	// if daily is 0, return 0
+	if daily.Cmp(big.NewFloat(0)) == 0 {
+		return big.NewInt(0), nil
+	}
+
 	// commission rate
 	cr := big.NewFloat(validator.CommissionRate)
 	daily.Quo(daily, cr)
