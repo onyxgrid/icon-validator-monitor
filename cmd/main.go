@@ -69,7 +69,7 @@ func main() {
 	go engine.UpdateValidators()
 
 	// send the weekly report every saturday at 10:00
-	go engine.SendWeeklyReport()
-
+	engine.ScheduleWeekdayTask(6, 10, 0, engine.SendWeeklyReport)
+	
 	select {}
 }
