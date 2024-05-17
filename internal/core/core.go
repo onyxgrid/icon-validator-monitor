@@ -82,17 +82,19 @@ func (e *Engine) Init() {
 	})
 
 	// /start command to introduce the bot
-	dispatcher.AddHandler(handlers.NewCommand("start", e.start))
+	dispatcher.AddHandler(handlers.NewCommand("start", e.authHandler(e.start)))
 	// /register command to register a wallet
-	dispatcher.AddHandler(handlers.NewCommand("register", e.registerWallet))
+	dispatcher.AddHandler(handlers.NewCommand("register", e.authHandler(e.registerWallet)))
 	// /wallets command to show the wallets of a user
-	dispatcher.AddHandler(handlers.NewCommand("mywallets", e.showWallets))
+	dispatcher.AddHandler(handlers.NewCommand("mywallets", e.authHandler(e.showWallets)))
 	// /remove command to remove a wallet
-	dispatcher.AddHandler(handlers.NewCommand("remove", e.removeWallet))
+	dispatcher.AddHandler(handlers.NewCommand("remove",  e.authHandler(e.removeWallet)))
 	// /setemail command to set the email address
-	dispatcher.AddHandler(handlers.NewCommand("setemail", e.setEmailAddr))
+	dispatcher.AddHandler(handlers.NewCommand("setemail",  e.authHandler(e.setEmailAddr)))
 	// /testsenders command to test the senders
-	dispatcher.AddHandler(handlers.NewCommand("testalert", e.handleTestSenders))
+	dispatcher.AddHandler(handlers.NewCommand("testalert",  e.authHandler(e.handleTestSenders)))
+	// /cps command to toggle the CPS alert
+	dispatcher.AddHandler(handlers.NewCommand("cps", e.authHandler(e.toggleCPSAlert)))
 
 	// Handle all text messages.
 	dispatcher.AddHandler(handlers.NewMessage(message.Text, e.Listen))
@@ -139,18 +141,11 @@ func (t *Engine) Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 
 // start introduces the bot.
 func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
-	// add the user to the database
-	err := db.DBInstance.AddUser(strconv.FormatInt(ctx.EffectiveMessage.Chat.Id, 10))
-	if err != nil {
-		e.Logger.Error("failed to add user to the database", err, "user: ", ctx.EffectiveMessage.Chat.Id)
-		return fmt.Errorf("failed to add user to the database: %w", err)
-	}
-
 	// send the introduction message
 	msg := "Welcome to the ICON Validator Monitor Bot!\n\n"
 	msg += "With this bot you can monitor your ICON wallets. Register wallets that you want to keep track of. You can get an overview of all your registered wallets with /mywallets\n\nYou will also receive a weekly overview every Saturday and his bot will send you an alert if a validator is jailed and not earning rewards for the ICX you delegated to this validator. Set an email adres if you also want to receive messages via email.\n\n"
 
-	_, err = b.SendMessage(ctx.EffectiveMessage.Chat.Id, msg, nil)
+	_, err := b.SendMessage(ctx.EffectiveMessage.Chat.Id, msg, nil)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
