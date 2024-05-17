@@ -3,9 +3,12 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/paulrouge/icon-validator-monitor/internal/config"
+	"github.com/paulrouge/icon-validator-monitor/internal/model"
 )
 
 type DB struct {
@@ -15,7 +18,7 @@ type DB struct {
 var DBInstance *DB
 
 func NewDB() error {
-	db, err := sql.Open("sqlite3", "./data/users.db")
+	db, err := sql.Open("sqlite3", "./data/test_users.db")
 	if err != nil {
 		return err
 	}
@@ -33,10 +36,66 @@ func (d *DB) Init() error {
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
 			email TEXT,
-			wallets TEXT
+			wallets TEXT DEFAULT '',
+			alerts TEXT DEFAULT ''
 		)
 	`)
+
 	return err
+}
+
+func (d *DB) Migrate() {
+	// prompt user to run the migration
+	fmt.Println("Are you sure you want to run the migrate function? (y/n)")
+	var input string
+	fmt.Scanln(&input)
+	if input != "y" {
+		return
+	}
+
+	// create a user_new table
+	_, err := d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS users_new (
+			id TEXT PRIMARY KEY,
+			email TEXT DEFAULT '',
+			wallets TEXT DEFAULT '',
+			alerts TEXT DEFAULT ''
+		)
+	`)
+	if err != nil {
+		fmt.Println("creating", err)
+		return
+	}
+
+	// copy the data from the old table to the new table
+	_, err = d.db.Exec(`
+		INSERT INTO users_new (id, email, wallets, alerts)
+		SELECT id, email, wallets, alerts
+		FROM users
+	`)
+	if err != nil {
+		fmt.Println("copying", err)
+		return
+	}
+
+	// drop the old table
+	_, err = d.db.Exec(`
+		DROP TABLE users
+	`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// rename the new table to the old table
+	_, err = d.db.Exec(`
+		ALTER TABLE users_new
+		RENAME TO users
+	`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func (d *DB) AddUser(id string) error {
@@ -47,7 +106,6 @@ func (d *DB) AddUser(id string) error {
 		return err
 	}
 	if count > 0 {
-		fmt.Println("user already exists")
 		return nil
 	}
 
@@ -55,14 +113,28 @@ func (d *DB) AddUser(id string) error {
 	return err
 }
 
-// GetUserEmail returns the email of a user given its id. If the user does not exist, it returns an empty string.
-func (d *DB) GetUserEmail(id string) string {
-	var email string
-	err := d.db.QueryRow("SELECT email FROM users WHERE id = ?", id).Scan(&email)
+func (d *DB) GetUser(id string) (*model.User, error) {
+	var user model.User
+	var wallets sql.NullString
+	var alerts sql.NullString
+
+	err := d.db.QueryRow("SELECT email, wallets, alerts FROM users WHERE id = ?", id).Scan(&user.Email, &wallets, &alerts)
 	if err != nil {
-		return ""
+		return nil, err
 	}
-	return email
+
+	if wallets.Valid {
+		user.Wallets = strings.Split(wallets.String, ",")
+	} else {
+		user.Wallets = []string{}
+	}
+
+	if alerts.Valid {
+		user.Alerts = strings.Split(alerts.String, ",")
+	} else {
+		user.Alerts = []string{}
+	}
+	return &user, nil
 }
 
 // SetUserEmail sets the email of a user given its id. If the user does not exist, it returns an error.
@@ -74,35 +146,23 @@ func (d *DB) SetUserEmail(id, email string) error {
 	return err
 }
 
-// GetUserWallets returns a slice of wallets of a user given its id. If the user does not exist, or has no wallets, it returns an empty slice.
-func (d *DB) GetUserWallets(id string) []string {
-	var wallets string
-	err := d.db.QueryRow("SELECT wallets FROM users WHERE id = ?", id).Scan(&wallets)
-	if err != nil {
-		return []string{}
-	}
-
-	// split the wallets into a slice
-	var w []string
-	if wallets != "" {
-		w = strings.Split(wallets, ",")
-	}
-
-	return w
-}
 
 // AddUserWallet adds a wallet to the user's wallets. If the user does not exist, it inserts a new row.
 func (d *DB) AddUserWallet(id, wallet string) error {
-	wallets := d.GetUserWallets(id)
+	// wallets := d.GetUserWallets(id)
+	u, err := d.GetUser(id)
+	if err != nil {
+		return err
+	}
 
-	if len(wallets) == 0 {
+	if len(u.Wallets) == 0 {
 		_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", wallet, id)
 		return err
 	} else {
 		// add the wallet to the db
-		wallets = append(wallets, wallet)
+		u.Wallets = append(u.Wallets, wallet)
 		// Join the wallets into a comma-separated string
-		walletString := strings.Join(wallets, ",")
+		walletString := strings.Join(u.Wallets, ",")
 
 		_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", walletString, id)
 		return err
@@ -111,11 +171,15 @@ func (d *DB) AddUserWallet(id, wallet string) error {
 
 // RemoveUserWallet removes a wallet from the user's wallets. If the user does not exist, it returns an error.
 func (d *DB) RemoveUserWallet(id, wallet string) error {
-	wallets := d.GetUserWallets(id)
+	// wallets := d.GetUserWallets(id)
+	u, err := d.GetUser(id)
+	if err != nil {
+		return err
+	}
 
 	// remove the wallet from the slice
 	var newWallets []string
-	for _, w := range wallets {
+	for _, w := range u.Wallets {
 		if w != wallet {
 			newWallets = append(newWallets, w)
 		}
@@ -123,7 +187,7 @@ func (d *DB) RemoveUserWallet(id, wallet string) error {
 
 	// Join the wallets into a comma-separated string
 	walletString := strings.Join(newWallets, ",")
-	_, err := d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", walletString, id)
+	_, err = d.db.Exec("UPDATE users SET wallets = ? WHERE id = ?", walletString, id)
 	return err
 }
 
@@ -136,6 +200,90 @@ func (d *DB) RemoveAllWalletsUser(id string) error {
 // GetAllUsers returns a slice of all users in the database.
 func (d *DB) GetAllUserIDs() ([]int64, error) {
 	rows, err := d.db.Query("SELECT id FROM users")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []int64
+	for rows.Next() {
+		var id int64
+		err = rows.Scan(&id)
+		if err != nil {
+			continue
+		}
+		users = append(users, id)
+	}
+	return users, nil
+}
+
+func (d *DB) AddAlert(id, alert string) error {
+	if !slices.Contains(config.ALERTS, alert) {
+		return fmt.Errorf("alert type %s is not valid", alert)
+	}
+
+	u, err := d.GetUser(id)
+	if err != nil {
+		return err
+	}
+
+	a := append(u.Alerts, alert)
+	as := strings.Join(a, ",")
+	
+	_, err = d.db.Exec("UPDATE users SET alerts = ? WHERE id = ?", as, id)
+	if err != nil {
+		fmt.Println("error adding alert", err)
+	}
+	return err
+}
+
+func (d *DB) RemoveAlert(id, alert string) error {
+	if !slices.Contains(config.ALERTS, alert) {
+		return fmt.Errorf("alert type %s is not valid", alert)
+	}
+
+	// get the user's alerts
+	var alerts string
+	err := d.db.QueryRow("SELECT alerts FROM users WHERE id = ?", id).Scan(&alerts)
+	if err != nil {
+		return err
+	}
+
+	// split the alerts into a slice
+	var a []string
+	if alerts != "" {
+		a = append(a, strings.Split(alerts, ",")...)
+	}
+	
+	// remove the alert from the slice
+	var newAlerts []string
+	for _, a := range a {
+		if a != alert {
+			newAlerts = append(newAlerts, a)
+		}
+	}
+
+	// a to []string
+	var aString []string
+	for _, alert := range newAlerts {
+		aString = append(aString, string(alert))
+	}
+
+	// Join the alerts into a comma-separated string
+	alertString := strings.Join(aString, ",")
+	_, err = d.db.Exec("UPDATE users SET alerts = ? WHERE id = ?", alertString, id)
+	return err
+}
+
+// GetUsersPerAlert returns a slice of user ids that have the given alert. If the alert type is not valid, it returns an error.
+//
+// Example of usage: GetUsersPerAlert("CPS")
+func (d *DB) GetUsersPerAlert(alert string) ([]int64, error) {
+	if !slices.Contains(config.ALERTS, alert) {
+		return nil, fmt.Errorf("alert type %s is not valid", alert)
+	}
+
+	rows, err := d.db.Query("SELECT id FROM users WHERE alerts LIKE ?", "%"+alert+"%")
 	if err != nil {
 		return nil, err
 	}
