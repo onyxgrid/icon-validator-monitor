@@ -88,11 +88,11 @@ func (e *Engine) Init() {
 	// /wallets command to show the wallets of a user
 	dispatcher.AddHandler(handlers.NewCommand("mywallets", e.authHandler(e.showWallets)))
 	// /remove command to remove a wallet
-	dispatcher.AddHandler(handlers.NewCommand("remove",  e.authHandler(e.removeWallet)))
+	dispatcher.AddHandler(handlers.NewCommand("remove", e.authHandler(e.removeWallet)))
 	// /setemail command to set the email address
-	dispatcher.AddHandler(handlers.NewCommand("setemail",  e.authHandler(e.setEmailAddr)))
+	dispatcher.AddHandler(handlers.NewCommand("setemail", e.authHandler(e.setEmailAddr)))
 	// /testsenders command to test the senders
-	dispatcher.AddHandler(handlers.NewCommand("testalert",  e.authHandler(e.handleTestSenders)))
+	dispatcher.AddHandler(handlers.NewCommand("testalert", e.authHandler(e.handleTestSenders)))
 	// /cps command to toggle the CPS alert
 	dispatcher.AddHandler(handlers.NewCommand("cps", e.authHandler(e.toggleCPSAlert)))
 
@@ -165,6 +165,7 @@ func (e *Engine) SendMessage(chatID string, message string) error {
 		ParseMode: "Markdown",
 	}
 
+	//todo handle the error, if the user has blocked the bot the user should be removed from the db.
 	_, err = e.bot.SendMessage(i, message, opts)
 	if err != nil {
 		e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
@@ -186,6 +187,7 @@ func (e *Engine) SendAlert(chatID string, v string, w string) error {
 
 	msg := fmt.Sprintf("Validator jailed: *%s*\n%s is not earning rewards for the ICX delegated to this validator!", v, w)
 
+	//todo handle the error, if the user has blocked the bot the user should be removed from the db.
 	_, err = e.bot.SendMessage(i, msg, opts)
 	if err != nil {
 		e.Logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", v, "wallet: ", w)
@@ -196,21 +198,24 @@ func (e *Engine) SendAlert(chatID string, v string, w string) error {
 
 // UpdateValidators updates the validatormap every hour
 func (e *Engine) UpdateValidators() {
-	for {
-		validators, err := e.Icon.GetAllValidators()
-		if err != nil {
-			e.Logger.Error("failed to get validators", err)
-			continue
+	go func() {
+		for {
+			validators, err := e.Icon.GetAllValidators()
+			if err != nil {
+				e.Logger.Error("failed to get validators", err)
+				continue
+			}
+
+			validatorsMap := make(map[string]model.ValidatorInfo)
+			for _, v := range validators {
+				validatorsMap[v.Address] = v
+			}
+
+			e.Validators = validatorsMap
+			e.checkJail()
+
+			time.Sleep(time.Minute)
 		}
+	}()
 
-		validatorsMap := make(map[string]model.ValidatorInfo)
-		for _, v := range validators {
-			validatorsMap[v.Address] = v
-		}
-
-		e.Validators = validatorsMap
-		e.checkJail()
-
-		time.Sleep(time.Minute)
-	}
 }

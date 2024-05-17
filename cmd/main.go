@@ -66,7 +66,7 @@ func main() {
 	engine.RegisterSender(gmailSender)
 
 	// update the validators every hour
-	go engine.UpdateValidators()
+	engine.UpdateValidators()
 
 	// send the weekly report every saturday at 10:00
 	engine.ScheduleWeekdayTask(6, 10, 0, engine.SendWeeklyReport)
