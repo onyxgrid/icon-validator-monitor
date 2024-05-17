@@ -11,7 +11,7 @@ import (
 )
 
 // todo:
-// - Add correct logging troughout the code
+// - remove ids if sending fails
 
 func main() {
 	err := godotenv.Load()
