@@ -18,17 +18,26 @@ func (e *Engine) SendWeeklyReport() {
 
 	for _, uid := range uids {
 		uids := strconv.FormatInt(uid, 10)
-		wallets := db.DBInstance.GetUserWallets(uids)
+		u, err := db.DBInstance.GetUser(uids)
+		if err != nil {
+			e.Logger.Error("failed to get user: " + err.Error())
+			return
+		}
+
 		msg := "Weekly Report\n\n"
 		// of each wallet, check if it is delegated to the jailed validator
-		for _, w := range wallets {
+		for _, w := range u.Wallets {
+			if w == "" {
+				continue
+			}
+			
 			f := fmt.Sprintf("%s...%s\n", w[:6], w[len(w)-6:])
 			msg += fmt.Sprintf("*WALLET* - [%s](https://icontracker.xyz/address/%s)\n", f, w)
 
 			// get the delegation info
 			delegation, err := e.Icon.GetDelegation(w)
 			if err != nil {
-				e.Logger.Error("failed to get delegation info: " + err.Error())
+				e.Logger.Error("failed to get delegation info for address: "+ w + err.Error())
 				return
 			}
 

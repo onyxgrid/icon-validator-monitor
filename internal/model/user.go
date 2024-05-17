@@ -6,4 +6,5 @@ type User struct {
 	ID      int
 	Email   *string
 	Wallets []string
+	Alerts  []string
 }

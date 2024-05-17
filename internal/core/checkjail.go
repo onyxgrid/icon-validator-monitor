@@ -24,14 +24,22 @@ func (t *Engine) checkJail() {
 
 			for _, uid := range UIDs {
 				uids := strconv.FormatInt(uid, 10)
-				wallets := db.DBInstance.GetUserWallets(uids)
+
+				u, err := db.DBInstance.GetUser(uids)
+				if err != nil {
+					log.Println("failed to get user: " + err.Error())
+					return
+				}
 
 				// of each wallet, check if it is delegated to the jailed validator
-				for _, w := range wallets {
+				for _, w := range u.Wallets {
+					if w == "" {
+						continue
+					}
 					// check regular votes
 					delegation, err := t.Icon.GetDelegation(w)
 					if err != nil {
-						log.Println("failed to get delegation info: " + err.Error())
+						log.Println("reg votes - failed to get delegation info for wallet: " + w + err.Error())
 						return
 					}
 

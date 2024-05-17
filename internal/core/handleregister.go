@@ -45,11 +45,13 @@ func (e *Engine) handleRegisterReply(ctx *ext.Context) error {
 
 		return nil
 	} else {
-		// users current registered wallets
-		wallets := db.DBInstance.GetUserWallets(strconv.FormatInt(chatID, 10))
+		u, err := db.DBInstance.GetUser(strconv.FormatInt(chatID, 10))
+		if err != nil {
+			return fmt.Errorf("failed to get user: %w", err)
+		}
 
 		// check if the wallet is already registered
-		for _, wallet := range wallets {
+		for _, wallet := range u.Wallets {
 			if wallet == msg {
 				err := e.SendMessage(strconv.FormatInt(chatID, 10), msg+" is already registered.")
 				if err != nil {
@@ -64,7 +66,7 @@ func (e *Engine) handleRegisterReply(ctx *ext.Context) error {
 		}
 
 		// add the wallet to the database
-		err := db.DBInstance.AddUserWallet(strconv.FormatInt(chatID, 10), msg)
+		err = db.DBInstance.AddUserWallet(strconv.FormatInt(chatID, 10), msg)
 		if err != nil {
 			e.registerWalletMsgId = nil
 			return fmt.Errorf("failed to add wallet to the database: %w", err)
@@ -106,11 +108,14 @@ func (e *Engine) removeWallet(b *gotgbot.Bot, ctx *ext.Context) error {
 func (e *Engine) handleRemoveReply(ctx *ext.Context) error {
 	msg := ctx.EffectiveMessage.Text
 	chatID := ctx.EffectiveMessage.Chat.Id
-	// users current registered wallets
-	wallets := db.DBInstance.GetUserWallets(strconv.FormatInt(chatID, 10))
+
+	u, err := db.DBInstance.GetUser(strconv.FormatInt(chatID, 10))
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
 
 	// check if the wallet is already registered
-	for _, wallet := range wallets {
+	for _, wallet := range u.Wallets {
 		if wallet == msg {
 			// remove the wallet from the database
 			err := db.DBInstance.RemoveUserWallet(strconv.FormatInt(chatID, 10), msg)
@@ -134,7 +139,7 @@ func (e *Engine) handleRemoveReply(ctx *ext.Context) error {
 	}
 
 	// Send the message to the chat
-	err := e.SendMessage(strconv.FormatInt(chatID, 10), msg+" is unregistered.")
+	err = e.SendMessage(strconv.FormatInt(chatID, 10), msg+" is unregistered.")
 	if err != nil {
 		e.removeWalletMsgId = nil
 		return fmt.Errorf("failed to send message: %w", err)

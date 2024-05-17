@@ -46,8 +46,12 @@ func (m Mail) SendMessage(to string, message string) error {
 }
 
 func (m Mail) GetReceiver(uid string) string {
-	email := db.DBInstance.GetUserEmail(uid)
-	return email
+	u, err := db.DBInstance.GetUser(uid)
+	if err != nil {
+		return ""
+	}
+	
+	return *u.Email
 }
 
 func NewMail() (*Mail, error) {

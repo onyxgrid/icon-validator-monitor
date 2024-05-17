@@ -14,8 +14,13 @@ import (
 // showWallets shows the wallets of a user, and the delegation info
 func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	chatID := ctx.EffectiveMessage.Chat.Id
-	wallets := db.DBInstance.GetUserWallets(strconv.FormatInt(chatID, 10))
-	if wallets == nil {
+
+	u, err := db.DBInstance.GetUser(strconv.FormatInt(chatID, 10))
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if len(u.Wallets) == 0 {
 		err := e.SendMessage(strconv.FormatInt(chatID, 10), "You have no registered wallets.")
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
@@ -25,7 +30,11 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	msg := ""
 
-	for _, wallet := range wallets {
+	for _, wallet := range u.Wallets {
+		if wallet == "" {
+			continue
+		}
+		
 		// format address to hx012...h921
 		f := fmt.Sprintf("%s...%s\n", wallet[:6], wallet[len(wallet)-6:])
 		msg += fmt.Sprintf("*WALLET* - [%s](https://icontracker.xyz/address/%s)\n", f, wallet)
@@ -33,7 +42,7 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 		// get the delegation info
 		delegation, err := e.Icon.GetDelegation(wallet)
 		if err != nil {
-			return fmt.Errorf("failed to get delegation info: %w", err)
+			return fmt.Errorf("failed to get delegation info for address %v: %w", wallet, err)
 		}
 
 		if len(delegation.Delegations) > 0 {
@@ -97,7 +106,7 @@ func (e *Engine) showWallets(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Send the message to the chat
-	err := e.SendMessage(strconv.FormatInt(chatID, 10), msg)
+	err = e.SendMessage(strconv.FormatInt(chatID, 10), msg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
