@@ -11,7 +11,7 @@ import (
 )
 
 // todo:
-// - remove ids if sending fails
+// - remove ids if sending fails because bot is blocked
 
 func main() {
 	err := godotenv.Load()
@@ -70,6 +70,9 @@ func main() {
 
 	// send the weekly report every saturday at 10:00
 	engine.ScheduleWeekdayTask(6, 10, 0, engine.SendWeeklyReport)
-	
+
+	// the cps service
+	engine.RunCPSService()
+
 	select {}
 }

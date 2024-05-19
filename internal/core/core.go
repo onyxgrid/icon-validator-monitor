@@ -219,3 +219,82 @@ func (e *Engine) UpdateValidators() {
 	}()
 
 }
+
+func (e *Engine) RunCPSService() {
+	// todo determine time between checks - don't want to spam users
+	for {
+		t, err := e.Icon.GetRemainingTimePeriod()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if t < time.Hour*7*24 {
+			var priorityMessage string
+			var proposalMessage string
+			var progressMessage string
+
+			preps, err := e.Icon.GetPreps()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			for _, p := range preps {
+				priority, err := e.Icon.CheckPriorityVoting(p.Address)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				if !priority {
+					priorityMessage += fmt.Sprintf("🚨`%s` still have to make the Priority vote!\n\n", p.Name)
+				}
+
+				proposal, err := e.Icon.GetRemainingProject(p.Address, "proposal")
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				if len(proposal) > 0 {
+					proposalMessage += fmt.Sprintf("🚨`%s` has %d remaining proposals\n\n", p.Name, len(proposal))
+				}
+
+				progress, err := e.Icon.GetRemainingProject(p.Address, "progress_reports")
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				if len(progress) > 0 {
+					progressMessage += fmt.Sprintf("🚨`%s` has %d remaining progress reports\n\n", p.Name, len(progress))
+				}
+			}
+
+			msg := fmt.Sprintf("CPS Service Alert\n\n%s%s%s\nTime Left: %v", priorityMessage, proposalMessage, progressMessage, t)
+
+			e.sendCPSServiceAlert(msg)
+
+		}
+
+		time.Sleep(time.Second * 20)
+	}
+}
+
+func (e *Engine) sendCPSServiceAlert(m string) {
+	users, err := db.DBInstance.GetUsersPerAlert("CPS")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for _, u := range users {
+		us := fmt.Sprintf("%v", u)
+		err := e.SendMessage(us, m)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+}
