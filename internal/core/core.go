@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -143,7 +144,7 @@ func (t *Engine) Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 	// send the introduction message
 	msg := "Welcome to the ICON Validator Monitor Bot!\n\n"
-	msg += "With this bot you can monitor your ICON wallets. Register wallets that you want to keep track of. You can get an overview of all your registered wallets with /mywallets\n\nYou will also receive a weekly overview every Saturday and his bot will send you an alert if a validator is jailed and not earning rewards for the ICX you delegated to this validator. Set an email adres if you also want to receive messages via email.\n\n"
+	msg += "With this bot you can monitor your ICON wallets.\nRegister wallets that you want to keep track of.\nYou can get an overview of all your registered wallets with /mywallets\n\nYou will also receive a weekly overview every Saturday and his bot will send you an alert if a validator is jailed and not earning rewards for the ICX you delegated to this validator.\n\nSet an email adres if you also want to receive messages via email.\n\n"
 
 	_, err := b.SendMessage(ctx.EffectiveMessage.Chat.Id, msg, nil)
 	if err != nil {
@@ -155,6 +156,15 @@ func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 
 // SendMessage sends a message to a chat
 func (e *Engine) SendMessage(chatID string, message string) error {
+	u, err := db.DBInstance.GetUser(chatID)
+	if err != nil {
+		return err
+	}
+
+	if u.Inactive {
+		return nil
+	}
+	
 	// str to int64
 	i, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
@@ -165,10 +175,13 @@ func (e *Engine) SendMessage(chatID string, message string) error {
 		ParseMode: "Markdown",
 	}
 
-	//todo handle the error, if the user has blocked the bot the user should be removed from the db.
 	_, err = e.bot.SendMessage(i, message, opts)
 	if err != nil {
-		e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
+		if strings.Contains(err.Error(),"bot was blocked") {
+			db.DBInstance.SetUserInactive(chatID, true)
+		} else {
+			e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
+		}
 		return err
 	}
 	return nil
@@ -222,64 +235,66 @@ func (e *Engine) UpdateValidators() {
 
 func (e *Engine) RunCPSService() {
 	// todo determine time between checks - don't want to spam users
-	for {
-		t, err := e.Icon.GetRemainingTimePeriod()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		if t < time.Hour*7*24 {
-			var priorityMessage string
-			var proposalMessage string
-			var progressMessage string
-
-			preps, err := e.Icon.GetPreps()
+	go func() {
+		for {
+			t, err := e.Icon.GetRemainingTimePeriod()
 			if err != nil {
 				log.Println(err)
 				return
 			}
 
-			for _, p := range preps {
-				priority, err := e.Icon.CheckPriorityVoting(p.Address)
+			if t < time.Hour*7*24 {
+				var priorityMessage string
+				var proposalMessage string
+				var progressMessage string
+
+				preps, err := e.Icon.GetPreps()
 				if err != nil {
 					log.Println(err)
 					return
 				}
 
-				if !priority {
-					priorityMessage += fmt.Sprintf("🚨`%s` still have to make the Priority vote!\n\n", p.Name)
+				for _, p := range preps {
+					priority, err := e.Icon.CheckPriorityVoting(p.Address)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if !priority {
+						priorityMessage += fmt.Sprintf("🚨`%s` still have to make the Priority vote!\n\n", p.Name)
+					}
+
+					proposal, err := e.Icon.GetRemainingProject(p.Address, "proposal")
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if len(proposal) > 0 {
+						proposalMessage += fmt.Sprintf("🚨`%s` has %d remaining proposals\n\n", p.Name, len(proposal))
+					}
+
+					progress, err := e.Icon.GetRemainingProject(p.Address, "progress_reports")
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if len(progress) > 0 {
+						progressMessage += fmt.Sprintf("🚨`%s` has %d remaining progress reports\n\n", p.Name, len(progress))
+					}
 				}
 
-				proposal, err := e.Icon.GetRemainingProject(p.Address, "proposal")
-				if err != nil {
-					log.Println(err)
-					return
-				}
+				msg := fmt.Sprintf("CPS Service Alert\n\n%s%s%s\nTime Left: %v", priorityMessage, proposalMessage, progressMessage, t)
 
-				if len(proposal) > 0 {
-					proposalMessage += fmt.Sprintf("🚨`%s` has %d remaining proposals\n\n", p.Name, len(proposal))
-				}
+				e.sendCPSServiceAlert(msg)
 
-				progress, err := e.Icon.GetRemainingProject(p.Address, "progress_reports")
-				if err != nil {
-					log.Println(err)
-					return
-				}
-
-				if len(progress) > 0 {
-					progressMessage += fmt.Sprintf("🚨`%s` has %d remaining progress reports\n\n", p.Name, len(progress))
-				}
 			}
 
-			msg := fmt.Sprintf("CPS Service Alert\n\n%s%s%s\nTime Left: %v", priorityMessage, proposalMessage, progressMessage, t)
-
-			e.sendCPSServiceAlert(msg)
-
+			time.Sleep(time.Second * 20)
 		}
-
-		time.Sleep(time.Second * 20)
-	}
+	}()
 }
 
 func (e *Engine) sendCPSServiceAlert(m string) {

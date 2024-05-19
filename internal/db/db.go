@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -37,13 +38,17 @@ func (d *DB) Init() error {
 			id TEXT PRIMARY KEY,
 			email TEXT,
 			wallets TEXT DEFAULT '',
-			alerts TEXT DEFAULT ''
+			alerts TEXT DEFAULT '',
+			inactive BOOLEAN DEFAULT FALSE
 		)
 	`)
-
+	// d.Migrate()
 	return err
 }
 
+// Migrate migrates the database schema from the old schema to the new schema.
+// use this function to migrate the database schema from the old schema to the new schema.
+// run the function by calling db.Migrate()
 func (d *DB) Migrate() {
 	// prompt user to run the migration
 	fmt.Println("Are you sure you want to run the migrate function? (y/n)")
@@ -53,49 +58,61 @@ func (d *DB) Migrate() {
 		return
 	}
 
+	// add a new column to the users table called inactive
+	// _, err := d.db.Exec(`
+	// 	ALTER TABLE users
+	// 	ADD COLUMN inactive BOOLEAN DEFAULT FALSE
+	// `)
+
+	// if err != nil {
+	// 	fmt.Println("adding inactive", err)
+	// 	return
+	// }
+
 	// create a user_new table
-	_, err := d.db.Exec(`
-		CREATE TABLE IF NOT EXISTS users_new (
-			id TEXT PRIMARY KEY,
-			email TEXT DEFAULT '',
-			wallets TEXT DEFAULT '',
-			alerts TEXT DEFAULT ''
-		)
-	`)
-	if err != nil {
-		fmt.Println("creating", err)
-		return
-	}
+	// _, err := d.db.Exec(`
+	// 	CREATE TABLE IF NOT EXISTS users_new (
+	// 		id TEXT PRIMARY KEY,
+	// 		email TEXT DEFAULT '',
+	// 		wallets TEXT DEFAULT '',
+	// 		alerts TEXT DEFAULT '',
+	// 		inactive BOOLEAN DEFAULT FALSE
+	// 	)
+	// `)
+	// if err != nil {
+	// 	fmt.Println("creating", err)
+	// 	return
+	// }
 
 	// copy the data from the old table to the new table
-	_, err = d.db.Exec(`
-		INSERT INTO users_new (id, email, wallets, alerts)
-		SELECT id, email, wallets, alerts
-		FROM users
-	`)
-	if err != nil {
-		fmt.Println("copying", err)
-		return
-	}
+	// _, err = d.db.Exec(`
+	// 	INSERT INTO users_new (id, email, wallets, alerts, inactive)
+	// 	SELECT id, email, wallets, alerts, inactive
+	// 	FROM users
+	// `)
+	// if err != nil {
+	// 	fmt.Println("copying", err)
+	// 	return
+	// }
 
 	// drop the old table
-	_, err = d.db.Exec(`
-		DROP TABLE users
-	`)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// _, err = d.db.Exec(`
+	// 	DROP TABLE users
+	// `)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
 	// rename the new table to the old table
-	_, err = d.db.Exec(`
-		ALTER TABLE users_new
-		RENAME TO users
-	`)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// _, err = d.db.Exec(`
+	// 	ALTER TABLE users_new
+	// 	RENAME TO users
+	// `)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 }
 
 func (d *DB) AddUser(id string) error {
@@ -113,14 +130,14 @@ func (d *DB) AddUser(id string) error {
 	return err
 }
 
-func (d *DB) GetUser(id string) (*model.User, error) {
+func (d *DB) GetUser(id string) (model.User, error) {
 	var user model.User
 	var wallets sql.NullString
 	var alerts sql.NullString
 
-	err := d.db.QueryRow("SELECT email, wallets, alerts FROM users WHERE id = ?", id).Scan(&user.Email, &wallets, &alerts)
+	err := d.db.QueryRow("SELECT email, wallets, alerts, inactive FROM users WHERE id = ?", id).Scan(&user.Email, &wallets, &alerts, &user.Inactive)
 	if err != nil {
-		return nil, err
+		return user, err
 	}
 
 	if wallets.Valid {
@@ -134,7 +151,14 @@ func (d *DB) GetUser(id string) (*model.User, error) {
 	} else {
 		user.Alerts = []string{}
 	}
-	return &user, nil
+
+	iid, err := strconv.Atoi(id)
+	if err != nil {
+		return user, err
+	}
+	user.ID = iid
+
+	return user, nil
 }
 
 // SetUserEmail sets the email of a user given its id. If the user does not exist, it returns an error.
@@ -146,6 +170,14 @@ func (d *DB) SetUserEmail(id, email string) error {
 	return err
 }
 
+// SetUserInactive sets the inactive status of a user given its id. If the user does not exist, it returns an error.
+func (d *DB) SetUserInactive(id string, inactive bool) error {
+	_, err := d.db.Exec("UPDATE users SET inactive = ? WHERE id = ?", inactive, id)
+	if err != nil {
+		fmt.Println("error setting inactive", err)
+	}
+	return err
+}
 
 // AddUserWallet adds a wallet to the user's wallets. If the user does not exist, it inserts a new row.
 func (d *DB) AddUserWallet(id, wallet string) error {
@@ -229,7 +261,7 @@ func (d *DB) AddAlert(id, alert string) error {
 
 	a := append(u.Alerts, alert)
 	as := strings.Join(a, ",")
-	
+
 	_, err = d.db.Exec("UPDATE users SET alerts = ? WHERE id = ?", as, id)
 	if err != nil {
 		fmt.Println("error adding alert", err)
@@ -254,7 +286,7 @@ func (d *DB) RemoveAlert(id, alert string) error {
 	if alerts != "" {
 		a = append(a, strings.Split(alerts, ",")...)
 	}
-	
+
 	// remove the alert from the slice
 	var newAlerts []string
 	for _, a := range a {
