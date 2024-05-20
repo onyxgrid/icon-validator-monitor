@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -88,11 +89,11 @@ func (e *Engine) Init() {
 	// /wallets command to show the wallets of a user
 	dispatcher.AddHandler(handlers.NewCommand("mywallets", e.authHandler(e.showWallets)))
 	// /remove command to remove a wallet
-	dispatcher.AddHandler(handlers.NewCommand("remove",  e.authHandler(e.removeWallet)))
+	dispatcher.AddHandler(handlers.NewCommand("remove", e.authHandler(e.removeWallet)))
 	// /setemail command to set the email address
-	dispatcher.AddHandler(handlers.NewCommand("setemail",  e.authHandler(e.setEmailAddr)))
+	dispatcher.AddHandler(handlers.NewCommand("setemail", e.authHandler(e.setEmailAddr)))
 	// /testsenders command to test the senders
-	dispatcher.AddHandler(handlers.NewCommand("testalert",  e.authHandler(e.handleTestSenders)))
+	dispatcher.AddHandler(handlers.NewCommand("testalert", e.authHandler(e.handleTestSenders)))
 	// /cps command to toggle the CPS alert
 	dispatcher.AddHandler(handlers.NewCommand("cps", e.authHandler(e.toggleCPSAlert)))
 
@@ -143,7 +144,7 @@ func (t *Engine) Listen(b *gotgbot.Bot, ctx *ext.Context) error {
 func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 	// send the introduction message
 	msg := "Welcome to the ICON Validator Monitor Bot!\n\n"
-	msg += "With this bot you can monitor your ICON wallets. Register wallets that you want to keep track of. You can get an overview of all your registered wallets with /mywallets\n\nYou will also receive a weekly overview every Saturday and his bot will send you an alert if a validator is jailed and not earning rewards for the ICX you delegated to this validator. Set an email adres if you also want to receive messages via email.\n\n"
+	msg += "With this bot you can monitor your ICON wallets.\nRegister wallets that you want to keep track of.\nYou can get an overview of all your registered wallets with /mywallets\n\nYou will also receive a weekly overview every Saturday and his bot will send you an alert if a validator is jailed and not earning rewards for the ICX you delegated to this validator.\n\nSet an email adres if you also want to receive messages via email.\n\n"
 
 	_, err := b.SendMessage(ctx.EffectiveMessage.Chat.Id, msg, nil)
 	if err != nil {
@@ -155,6 +156,15 @@ func (e *Engine) start(b *gotgbot.Bot, ctx *ext.Context) error {
 
 // SendMessage sends a message to a chat
 func (e *Engine) SendMessage(chatID string, message string) error {
+	u, err := db.DBInstance.GetUser(chatID)
+	if err != nil {
+		return err
+	}
+
+	if u.Inactive {
+		return nil
+	}
+	
 	// str to int64
 	i, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
@@ -167,7 +177,11 @@ func (e *Engine) SendMessage(chatID string, message string) error {
 
 	_, err = e.bot.SendMessage(i, message, opts)
 	if err != nil {
-		e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
+		if strings.Contains(err.Error(), "bot was blocked") {
+			db.DBInstance.SetUserInactive(chatID, true)
+		} else {
+			e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
+		}
 		return err
 	}
 	return nil
@@ -186,9 +200,14 @@ func (e *Engine) SendAlert(chatID string, v string, w string) error {
 
 	msg := fmt.Sprintf("Validator jailed: *%s*\n%s is not earning rewards for the ICX delegated to this validator!", v, w)
 
+	//todo handle the error, if the user has blocked the bot the user should be removed from the db.
 	_, err = e.bot.SendMessage(i, msg, opts)
 	if err != nil {
-		e.Logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", v, "wallet: ", w)
+		if strings.Contains(err.Error(), "bot was blocked") {
+			db.DBInstance.SetUserInactive(chatID, true)
+		} else {
+			e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", msg)
+		}
 		return err
 	}
 	return nil
@@ -196,21 +215,112 @@ func (e *Engine) SendAlert(chatID string, v string, w string) error {
 
 // UpdateValidators updates the validatormap every hour
 func (e *Engine) UpdateValidators() {
-	for {
-		validators, err := e.Icon.GetAllValidators()
-		if err != nil {
-			e.Logger.Error("failed to get validators", err)
-			continue
+	go func() {
+		for {
+			validators, err := e.Icon.GetAllValidators()
+			if err != nil {
+				e.Logger.Error("failed to get validators", err)
+				continue
+			}
+
+			validatorsMap := make(map[string]model.ValidatorInfo)
+			for _, v := range validators {
+				validatorsMap[v.Address] = v
+			}
+
+			e.Validators = validatorsMap
+			e.checkJail()
+
+			time.Sleep(time.Minute)
 		}
+	}()
 
-		validatorsMap := make(map[string]model.ValidatorInfo)
-		for _, v := range validators {
-			validatorsMap[v.Address] = v
+}
+
+func (e *Engine) RunCPSService() {
+	// todo determine time between checks - don't want to spam users
+	go func() {
+		for {
+			t, err := e.Icon.GetRemainingTimePeriod()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			if t < time.Hour*3*24 {
+				var priorityMessage string
+				var proposalMessage string
+				var progressMessage string
+
+				preps, err := e.Icon.GetPreps()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				for _, p := range preps {
+					priority, err := e.Icon.CheckPriorityVoting(p.Address)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if !priority {
+						priorityMessage += fmt.Sprintf("🚨`%s` still have to make the Priority vote!\n\n", p.Name)
+					}
+
+					proposal, err := e.Icon.GetRemainingProject(p.Address, "proposal")
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if len(proposal) > 0 {
+						proposalMessage += fmt.Sprintf("🚨`%s` has %d remaining proposals\n\n", p.Name, len(proposal))
+					}
+
+					progress, err := e.Icon.GetRemainingProject(p.Address, "progress_reports")
+					if err != nil {
+						log.Println(err)
+						return
+					}
+
+					if len(progress) > 0 {
+						progressMessage += fmt.Sprintf("🚨`%s` has %d remaining progress reports\n\n", p.Name, len(progress))
+					}
+				}
+
+				msg := fmt.Sprintf("CPS Service Alert\n\n%s%s%s\nTime Left: %v", priorityMessage, proposalMessage, progressMessage, t)
+
+				e.sendCPSServiceAlert(msg)
+
+			}
+
+			// check every 6 hours if less than 24 hours left
+			if t < time.Hour*24 {
+				time.Sleep(time.Hour * 6)
+			} else {
+				time.Sleep(time.Hour * 24)
+			}
 		}
+	}()
+}
 
-		e.Validators = validatorsMap
-		e.checkJail()
+func (e *Engine) sendCPSServiceAlert(m string) {
+	users, err := db.DBInstance.GetUsersPerAlert("CPS")
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		time.Sleep(time.Minute)
+	for _, u := range users {
+		us := fmt.Sprintf("%v", u)
+		// send message to all senders
+		for _, s := range e.Senders {
+			err := s.SendMessage(s.GetReceiver(us), m)
+			if err != nil {
+				e.Logger.Error("failed to send message: " + err.Error())
+			}
+		}
 	}
 }

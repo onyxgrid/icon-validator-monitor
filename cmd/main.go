@@ -10,8 +10,18 @@ import (
 	"github.com/paulrouge/icon-validator-monitor/internal/sender/mail"
 )
 
-// todo:
-// - Add correct logging troughout the code
+/* helper for the botfather commands, you can paste these in when setting menu command in the botfather menu:
+
+register - Register a wallet to track
+cps - Receive CPS alerts
+remove - Remove a wallet from tracking
+mywallets - Get the statistics of all your wallets
+setemail - Set the email to receive alerts
+testalert - Test the alert system
+
+*/
+
+//todo handle all the send messages errors, set user to inactive if the the tg message is not send, doing it already at some places
 
 func main() {
 	err := godotenv.Load()
@@ -66,10 +76,13 @@ func main() {
 	engine.RegisterSender(gmailSender)
 
 	// update the validators every hour
-	go engine.UpdateValidators()
+	engine.UpdateValidators()
 
 	// send the weekly report every saturday at 10:00
 	engine.ScheduleWeekdayTask(6, 10, 0, engine.SendWeeklyReport)
-	
+
+	// the cps service
+	engine.RunCPSService()
+
 	select {}
 }
