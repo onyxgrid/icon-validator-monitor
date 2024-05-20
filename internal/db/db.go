@@ -19,7 +19,7 @@ type DB struct {
 var DBInstance *DB
 
 func NewDB() error {
-	db, err := sql.Open("sqlite3", "./data/test_users.db")
+	db, err := sql.Open("sqlite3", "./data/users.db")
 	if err != nil {
 		return err
 	}
@@ -65,12 +65,12 @@ func (d *DB) Migrate() {
 	// `)
 
 	// if err != nil {
-	// 	fmt.Println("adding inactive", err)
+	// 	fmt.Println("adding inactive & alerts", err)
 	// 	return
 	// }
 
-	// create a user_new table
-	// _, err := d.db.Exec(`
+	// // create a user_new table
+	// _, err = d.db.Exec(`
 	// 	CREATE TABLE IF NOT EXISTS users_new (
 	// 		id TEXT PRIMARY KEY,
 	// 		email TEXT DEFAULT '',
@@ -80,11 +80,11 @@ func (d *DB) Migrate() {
 	// 	)
 	// `)
 	// if err != nil {
-	// 	fmt.Println("creating", err)
+	// 	fmt.Println("creating new", err)
 	// 	return
 	// }
 
-	// copy the data from the old table to the new table
+	// // copy the data from the old table to the new table
 	// _, err = d.db.Exec(`
 	// 	INSERT INTO users_new (id, email, wallets, alerts, inactive)
 	// 	SELECT id, email, wallets, alerts, inactive
@@ -95,7 +95,7 @@ func (d *DB) Migrate() {
 	// 	return
 	// }
 
-	// drop the old table
+	// // drop the old table
 	// _, err = d.db.Exec(`
 	// 	DROP TABLE users
 	// `)
@@ -104,7 +104,7 @@ func (d *DB) Migrate() {
 	// 	return
 	// }
 
-	// rename the new table to the old table
+	// // rename the new table to the old table
 	// _, err = d.db.Exec(`
 	// 	ALTER TABLE users_new
 	// 	RENAME TO users
