@@ -42,15 +42,9 @@ func (e *Engine) toggleCPSAlert(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Reply to the user
-	_, err = b.SendMessage(ctx.EffectiveMessage.Chat.Id, reply, &gotgbot.SendMessageOpts{
-		ParseMode: "html",
-		ReplyMarkup: &gotgbot.ForceReply{
-			ForceReply: true,
-		},
-	})
+	_, err = b.SendMessage(ctx.EffectiveMessage.Chat.Id, reply, nil)
 	if err != nil {
-		fmt.Println("failed to send reply message", err)
-		return fmt.Errorf("failed to send reply message: %w", err)
+		return fmt.Errorf("failed to send cps message: %w", err)
 	}
 
 	return nil
