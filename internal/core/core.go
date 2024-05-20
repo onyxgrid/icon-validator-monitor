@@ -177,7 +177,7 @@ func (e *Engine) SendMessage(chatID string, message string) error {
 
 	_, err = e.bot.SendMessage(i, message, opts)
 	if err != nil {
-		if strings.Contains(err.Error(),"bot was blocked") {
+		if strings.Contains(err.Error(), "bot was blocked") {
 			db.DBInstance.SetUserInactive(chatID, true)
 		} else {
 			e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", message)
@@ -203,7 +203,11 @@ func (e *Engine) SendAlert(chatID string, v string, w string) error {
 	//todo handle the error, if the user has blocked the bot the user should be removed from the db.
 	_, err = e.bot.SendMessage(i, msg, opts)
 	if err != nil {
-		e.Logger.Error("failed to send alert", err, "chatID: ", chatID, "validator: ", v, "wallet: ", w)
+		if strings.Contains(err.Error(), "bot was blocked") {
+			db.DBInstance.SetUserInactive(chatID, true)
+		} else {
+			e.Logger.Error("failed to send message", err, "chatID: ", chatID, "message: ", msg)
+		}
 		return err
 	}
 	return nil
@@ -243,7 +247,7 @@ func (e *Engine) RunCPSService() {
 				return
 			}
 
-			if t < time.Hour*7*24 {
+			if t < time.Hour*3*24 {
 				var priorityMessage string
 				var proposalMessage string
 				var progressMessage string
@@ -292,7 +296,12 @@ func (e *Engine) RunCPSService() {
 
 			}
 
-			time.Sleep(time.Second * 20)
+			// check every 6 hours if less than 24 hours left
+			if t < time.Hour*24 {
+				time.Sleep(time.Hour * 6)
+			} else {
+				time.Sleep(time.Hour * 24)
+			}
 		}
 	}()
 }
@@ -306,10 +315,12 @@ func (e *Engine) sendCPSServiceAlert(m string) {
 
 	for _, u := range users {
 		us := fmt.Sprintf("%v", u)
-		err := e.SendMessage(us, m)
-		if err != nil {
-			log.Println(err)
-			return
+		// send message to all senders
+		for _, s := range e.Senders {
+			err := s.SendMessage(s.GetReceiver(us), m)
+			if err != nil {
+				e.Logger.Error("failed to send message: " + err.Error())
+			}
 		}
 	}
 }
