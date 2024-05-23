@@ -50,6 +50,10 @@ func (m Mail) GetReceiver(uid string) string {
 	if err != nil {
 		return ""
 	}
+
+	if u.Email == nil {
+		return ""
+	}
 	
 	return *u.Email
 }

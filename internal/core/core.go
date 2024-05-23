@@ -294,13 +294,12 @@ func (e *Engine) RunCPSService() {
 
 				e.sendCPSServiceAlert(msg)
 
-			}
-
 			// check every 6 hours if less than 24 hours left
 			if t < time.Hour*24 {
 				time.Sleep(time.Hour * 6)
 			} else {
 				time.Sleep(time.Hour * 24)
+			}
 			}
 		}
 	}()
