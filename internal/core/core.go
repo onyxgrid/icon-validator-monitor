@@ -237,8 +237,7 @@ func (e *Engine) UpdateValidators() {
 
 }
 
-func (e *Engine) RunCPSService() {
-	// todo determine time between checks - don't want to spam users
+func (e *Engine) RunCPSService() {	
 	go func() {
 		for {
 			t, err := e.Icon.GetRemainingTimePeriod()
@@ -288,6 +287,11 @@ func (e *Engine) RunCPSService() {
 					if len(progress) > 0 {
 						progressMessage += fmt.Sprintf("🚨`%s` has %d remaining progress reports\n\n", p.Name, len(progress))
 					}
+				}
+
+				if priorityMessage == "" && proposalMessage == "" && progressMessage == "" {
+					time.Sleep(time.Hour)
+					return
 				}
 
 				msg := fmt.Sprintf("CPS Service Alert\n\n%s%s%s\nTime Left: %v", priorityMessage, proposalMessage, progressMessage, t)
